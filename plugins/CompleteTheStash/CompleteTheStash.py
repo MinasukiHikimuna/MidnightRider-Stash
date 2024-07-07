@@ -32,8 +32,25 @@ class LocalStashClient:
     def find_performers(self, performer_filter, filter):
         return self.local_stash.find_performers(performer_filter, filter)
 
-    def find_performer(self, performer_id, full=False, query=""):
-        return self.local_stash.find_performer(performer_id, full, query)
+    def find_performer(self, performer_id: int) -> dict:
+        create = False
+        fragment = """
+        id
+        name
+        stash_ids {
+            stash_id
+            endpoint
+        }
+        scenes {
+            id
+            title
+            stash_ids {
+                stash_id
+                endpoint
+            }
+        }
+        """
+        return self.local_stash.find_performer(performer_id, create, fragment)
 
     def create_scene(self, scene_data):
         return self.local_stash.create_scene(scene_data)
@@ -440,26 +457,7 @@ def process_performers():
 def process_performer(
     local_performer_id: int, missing_performers_by_stash_id: dict[str, int]
 ):
-    local_performer_details = local_stash_client.find_performer(
-        local_performer_id,
-        False,
-        """
-        id
-        name
-        stash_ids {
-            stash_id
-            endpoint
-        }
-        scenes {
-            id
-            title
-            stash_ids {
-                stash_id
-                endpoint
-            }
-        }
-        """,
-    )
+    local_performer_details = local_stash_client.find_performer(local_performer_id)
     if not local_performer_details:
         logger.error("Failed to retrieve details for performer.")
         return
