@@ -13,6 +13,35 @@ sys.path.append(script_dir)
 import config  # Import the configuration
 
 
+class LocalStashClient:
+    def __init__(self, config, logger):
+        self.local_stash = StashInterface(
+            {
+                "scheme": config.LOCAL_GQL_SCHEME,
+                "host": config.LOCAL_GQL_HOST,
+                "port": config.LOCAL_GQL_PORT,
+                "apikey": config.LOCAL_API_KEY,
+                "logger": logger,
+            }
+        )
+        self.logger = logger
+
+    def find_tag(self, tag_name):
+        return self.local_stash.find_tag({"name": tag_name})
+
+    def find_performers(self, performer_filter, filter):
+        return self.local_stash.find_performers(performer_filter, filter)
+
+    def find_performer(self, performer_id, full=False, query=""):
+        return self.local_stash.find_performer(performer_id, full, query)
+
+    def create_scene(self, scene_data):
+        return self.local_stash.create_scene(scene_data)
+
+    def destroy_scene(self, scene_id):
+        return self.local_stash.destroy_scene(scene_id)
+
+
 class StashDbClient:
     def __init__(self, endpoint, api_key):
         self.endpoint = endpoint
@@ -176,16 +205,6 @@ class StashDbClient:
         return filtered_scenes
 
 
-local_stash = StashInterface(
-    {
-        "scheme": config.LOCAL_GQL_SCHEME,
-        "host": config.LOCAL_GQL_HOST,
-        "port": config.LOCAL_GQL_PORT,
-        "apikey": config.LOCAL_API_KEY,
-        "logger": logger,
-    }
-)
-
 missing_stash = StashInterface(
     {
         "scheme": config.MISSING_GQL_SCHEME,
@@ -197,6 +216,7 @@ missing_stash = StashInterface(
 )
 
 stashdb_client = StashDbClient(config.STASHDB_ENDPOINT, config.STASHDB_API_KEY)
+local_stash_client = LocalStashClient(config, logger)
 
 
 def compare_scenes(local_scenes, existing_missing_scenes, stashdb_scenes):
@@ -372,7 +392,7 @@ def find_selected_local_performers():
     selected_performer_tags = config.PERFORMER_TAGS
     selected_performer_tag_ids = []
     for tag in selected_performer_tags:
-        tag_id = local_stash.find_tag({"name": tag})
+        tag_id = local_stash_client.find_tag(tag)
         if tag_id:
             selected_performer_tag_ids.append(tag_id["id"])
 
@@ -384,7 +404,7 @@ def find_selected_local_performers():
             "tags": {"value": selected_performer_tag_ids, "modifier": "INCLUDES"}
         }
         filter = {"page": page, "per_page": 25}
-        result = local_stash.find_performers(performer_filter, filter)
+        result = local_stash_client.find_performers(performer_filter, filter)
         performers.extend(result)
         if len(result) < 25:
             break
@@ -420,7 +440,7 @@ def process_performers():
 def process_performer(
     local_performer_id: int, missing_performers_by_stash_id: dict[str, int]
 ):
-    local_performer_details = local_stash.find_performer(
+    local_performer_details = local_stash_client.find_performer(
         local_performer_id,
         False,
         """
@@ -608,10 +628,6 @@ def compare_performer_scenes():
 
     json_input = process_performers_json_input
 
-    # raw_input = sys.stdin.read()
-    # json_input = json.loads(raw_input)
-    # logger.debug(f"Input: {json_input}")
-
     if (
         json_input
         and "args" in json_input
@@ -636,7 +652,7 @@ def compare_performer_scenes():
         )
         process_updated_scene(stash_id)
     else:
-        logger.error(f"Invalid input: {raw_input}")
+        logger.error(f"Invalid input: {json_input}")
 
 
 if __name__ == "__main__":
