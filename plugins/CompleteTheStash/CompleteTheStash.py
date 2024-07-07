@@ -1,10 +1,12 @@
-import requests
 import json
 import os
 import sys
 import stashapi.log as logger
-from stashapi.stashapp import StashInterface
 from datetime import datetime
+
+from LocalStashClient import LocalStashClient
+from MissingStashClient import MissingStashClient
+from StashDbClient import StashDbClient
 
 # Ensure the script can locate config.py
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -13,292 +15,24 @@ sys.path.append(script_dir)
 import config  # Import the configuration
 
 
-class LocalStashClient:
-    def __init__(self, config, logger):
-        self.local_stash = StashInterface(
-            {
-                "scheme": config.LOCAL_GQL_SCHEME,
-                "host": config.LOCAL_GQL_HOST,
-                "port": config.LOCAL_GQL_PORT,
-                "apikey": config.LOCAL_API_KEY,
-                "logger": logger,
-            }
-        )
-        self.logger = logger
-
-    def find_tag(self, tag_name):
-        return self.local_stash.find_tag({"name": tag_name})
-
-    def find_performers(self, performer_filter, filter):
-        return self.local_stash.find_performers(performer_filter, filter)
-
-    def find_performer(self, performer_id: int) -> dict:
-        create = False
-        fragment = """
-        id
-        name
-        stash_ids {
-            stash_id
-            endpoint
-        }
-        scenes {
-            id
-            title
-            stash_ids {
-                stash_id
-                endpoint
-            }
-        }
-        """
-        return self.local_stash.find_performer(performer_id, create, fragment)
-
-    def create_scene(self, scene_data):
-        return self.local_stash.create_scene(scene_data)
-
-    def destroy_scene(self, scene_id):
-        return self.local_stash.destroy_scene(scene_id)
-
-
-class StashDbClient:
-    def __init__(self, endpoint, api_key):
-        self.endpoint = endpoint
-        self.api_key = api_key
-
-    def gql_query(self, query, variables=None):
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Apikey"] = self.api_key
-        response = requests.post(
-            self.endpoint,
-            json={"query": query, "variables": variables},
-            headers=headers,
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.error(
-                f"Query failed with status code {response.status_code}: {response.text}"
-            )
-            return None
-
-    def query_performer_image(self, performer_stash_id):
-        query = """
-            query FindPerformer($id: ID!) {
-                findPerformer(id: $id) {
-                    id
-                    images {
-                        id
-                        url
-                    }
-                }
-            }
-        """
-        result = self.gql_query(query, {"id": performer_stash_id})
-        if result:
-            performer_data = result["data"]["findPerformer"]
-            if (
-                performer_data
-                and performer_data["images"]
-                and len(performer_data["images"]) > 0
-            ):
-                return performer_data["images"][0]["url"]
-            else:
-                logger.error(
-                    f"No image found for performer with Stash ID {performer_stash_id}."
-                )
-                return None
-
-        logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
-        return None
-
-    def query_studio_image(self, performer_stash_id):
-        query = """
-            query FindStudio($id: ID!) {
-                findStudio(id: $id) {
-                    id
-                    images {
-                        id
-                        url
-                    }
-                }
-            }
-        """
-        result = self.gql_query(query, {"id": performer_stash_id})
-        if result:
-            performer_data = result["data"]["findStudio"]
-            if (
-                performer_data
-                and performer_data["images"]
-                and len(performer_data["images"]) > 0
-            ):
-                return performer_data["images"][0]["url"]
-            else:
-                logger.error(
-                    f"No image found for studio with Stash ID {performer_stash_id}."
-                )
-                return None
-
-        logger.error(f"Failed to query studio with Stash ID {performer_stash_id}.")
-        return None
-
-    def query_scenes(self, performer_stash_ids):
-        query = """
-            query QueryScenes($stash_ids: [ID!]!, $page: Int!) {
-                queryScenes(
-                    input: {
-                        performers: {
-                            value: $stash_ids,
-                            modifier: INCLUDES
-                        },
-                        per_page: 25,
-                        page: $page
-                    }
-                ) {
-                    scenes {
-                        id
-                        title
-                        details
-                        release_date
-                        urls {
-                            url
-                            site {
-                                name
-                                url
-                            }
-                        }
-                        studio {
-                            id
-                            name
-                            parent {
-                                id
-                                name
-                            }
-                        }
-                        images {
-                            id
-                            url
-                        }
-                        performers {
-                            performer {
-                                id
-                                name
-                            }
-                        }
-                        duration
-                        code
-                        tags {
-                            id
-                            name
-                        }
-                    }
-                    count
-                }
-            }
-        """
-        scenes = []
-        page = 1
-        total_scenes = None
-        while True:
-            result = self.gql_query(
-                query, {"stash_ids": performer_stash_ids, "page": page}
-            )
-            if result:
-                scenes_data = result["data"]["queryScenes"]
-                scenes.extend(scenes_data["scenes"])
-                total_scenes = total_scenes or scenes_data["count"]
-                if len(scenes) >= total_scenes or len(scenes_data["scenes"]) < 25:
-                    break
-                page += 1
-            else:
-                break
-
-        filtered_scenes = []
-        for scene in scenes:
-            if scene["tags"]:
-                exclude_tags = config.EXCLUDE_TAGS
-                if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
-                    filtered_scenes.append(scene)
-
-        return filtered_scenes
-
-
-class MissingStashClient:
-    def __init__(self, config, logger):
-        self.missing_stash = StashInterface(
-            {
-                "scheme": config.MISSING_GQL_SCHEME,
-                "host": config.MISSING_GQL_HOST,
-                "port": config.MISSING_GQL_PORT,
-                "apikey": config.MISSING_API_KEY,
-                "logger": logger,
-            }
-        )
-        self.logger = logger
-
-    def get_or_create_tag(self, tag_name: str) -> dict:
-        return self.missing_stash.find_tag({"name": tag_name}, True)
-
-    def create_scene(self, scene_data):
-        return self.missing_stash.create_scene(scene_data)
-
-    def destroy_scene(self, scene_id: int) -> None:
-        return self.missing_stash.destroy_scene(scene_id)
-
-    def find_performer(self, performer_id: int) -> dict:
-        create = False
-        fragment = """
-            id
-            name
-            stash_ids {
-                stash_id
-                endpoint
-            }
-            scenes {
-                id
-                title
-                stash_ids {
-                    stash_id
-                    endpoint
-                }
-            }
-            """
-        return self.missing_stash.find_performer(performer_id, create, fragment)
-
-    def find_studios(self, studio_filter):
-        return self.missing_stash.find_studios(studio_filter)
-
-    def create_studio(self, studio_data):
-        return self.missing_stash.create_studio(studio_data)
-
-    def create_performer(self, performer_data):
-        return self.missing_stash.create_performer(performer_data)
-
-    def find_scenes_by_stash_id(self, stash_id: str):
-        return self.missing_stash.find_scenes(
-            {
-                "stash_id_endpoint": {
-                    "stash_id": stash_id,
-                    "endpoint": config.STASHDB_ENDPOINT,
-                    "modifier": "EQUALS",
-                }
-            }
-        )
-
-    def find_performers_by_stash_id(self, stash_id: str):
-        return self.missing_stash.find_performers(
-            {
-                "stash_id_endpoint": {
-                    "stash_id": stash_id,
-                    "endpoint": config.STASHDB_ENDPOINT,
-                    "modifier": "EQUALS",
-                }
-            }
-        )
-
-
-stashdb_client = StashDbClient(config.STASHDB_ENDPOINT, config.STASHDB_API_KEY)
-local_stash_client = LocalStashClient(config, logger)
-missing_stash_client = MissingStashClient(config, logger)
+stashdb_client = StashDbClient(
+    config.STASHDB_ENDPOINT, config.STASHDB_API_KEY, config.EXCLUDE_TAGS
+)
+local_stash_client = LocalStashClient(
+    config.LOCAL_GQL_SCHEME,
+    config.LOCAL_GQL_HOST,
+    config.LOCAL_GQL_PORT,
+    config.LOCAL_API_KEY,
+    logger,
+)
+missing_stash_client = MissingStashClient(
+    config.MISSING_GQL_SCHEME,
+    config.MISSING_GQL_HOST,
+    config.MISSING_GQL_PORT,
+    config.MISSING_API_KEY,
+    config.STASHDB_ENDPOINT,
+    logger,
+)
 
 
 def compare_scenes(local_scenes, existing_missing_scenes, stashdb_scenes):
