@@ -13,6 +13,169 @@ sys.path.append(script_dir)
 import config  # Import the configuration
 
 
+class StashDbClient:
+    def __init__(self, endpoint, api_key):
+        self.endpoint = endpoint
+        self.api_key = api_key
+
+    def gql_query(self, query, variables=None):
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Apikey"] = self.api_key
+        response = requests.post(
+            self.endpoint,
+            json={"query": query, "variables": variables},
+            headers=headers,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(
+                f"Query failed with status code {response.status_code}: {response.text}"
+            )
+            return None
+
+    def query_performer_image(self, performer_stash_id):
+        query = """
+            query FindPerformer($id: ID!) {
+                findPerformer(id: $id) {
+                    id
+                    images {
+                        id
+                        url
+                    }
+                }
+            }
+        """
+        result = self.gql_query(query, {"id": performer_stash_id})
+        if result:
+            performer_data = result["data"]["findPerformer"]
+            if (
+                performer_data
+                and performer_data["images"]
+                and len(performer_data["images"]) > 0
+            ):
+                return performer_data["images"][0]["url"]
+            else:
+                logger.error(
+                    f"No image found for performer with Stash ID {performer_stash_id}."
+                )
+                return None
+
+        logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
+        return None
+
+    def query_studio_image(self, performer_stash_id):
+        query = """
+            query FindStudio($id: ID!) {
+                findStudio(id: $id) {
+                    id
+                    images {
+                        id
+                        url
+                    }
+                }
+            }
+        """
+        result = self.gql_query(query, {"id": performer_stash_id})
+        if result:
+            performer_data = result["data"]["findStudio"]
+            if (
+                performer_data
+                and performer_data["images"]
+                and len(performer_data["images"]) > 0
+            ):
+                return performer_data["images"][0]["url"]
+            else:
+                logger.error(
+                    f"No image found for studio with Stash ID {performer_stash_id}."
+                )
+                return None
+
+        logger.error(f"Failed to query studio with Stash ID {performer_stash_id}.")
+        return None
+
+    def query_scenes(self, performer_stash_ids):
+        query = """
+            query QueryScenes($stash_ids: [ID!]!, $page: Int!) {
+                queryScenes(
+                    input: {
+                        performers: {
+                            value: $stash_ids,
+                            modifier: INCLUDES
+                        },
+                        per_page: 25,
+                        page: $page
+                    }
+                ) {
+                    scenes {
+                        id
+                        title
+                        details
+                        release_date
+                        urls {
+                            url
+                            site {
+                                name
+                                url
+                            }
+                        }
+                        studio {
+                            id
+                            name
+                            parent {
+                                id
+                                name
+                            }
+                        }
+                        images {
+                            id
+                            url
+                        }
+                        performers {
+                            performer {
+                                id
+                                name
+                            }
+                        }
+                        duration
+                        code
+                        tags {
+                            id
+                            name
+                        }
+                    }
+                    count
+                }
+            }
+        """
+        scenes = []
+        page = 1
+        total_scenes = None
+        while True:
+            result = self.gql_query(
+                query, {"stash_ids": performer_stash_ids, "page": page}
+            )
+            if result:
+                scenes_data = result["data"]["queryScenes"]
+                scenes.extend(scenes_data["scenes"])
+                total_scenes = total_scenes or scenes_data["count"]
+                if len(scenes) >= total_scenes or len(scenes_data["scenes"]) < 25:
+                    break
+                page += 1
+            else:
+                break
+
+        filtered_scenes = []
+        for scene in scenes:
+            if scene["tags"]:
+                exclude_tags = config.EXCLUDE_TAGS
+                if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
+                    filtered_scenes.append(scene)
+
+        return filtered_scenes
+
+
 local_stash = StashInterface(
     {
         "scheme": config.LOCAL_GQL_SCHEME,
@@ -22,7 +185,6 @@ local_stash = StashInterface(
         "logger": logger,
     }
 )
-
 
 missing_stash = StashInterface(
     {
@@ -34,177 +196,7 @@ missing_stash = StashInterface(
     }
 )
 
-
-def gql_query(endpoint, query, variables=None, api_key=None):
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Apikey"] = api_key
-    response = requests.post(
-        endpoint, json={"query": query, "variables": variables}, headers=headers
-    )
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logger.error(
-            f"Query failed with status code {response.status_code}: {response.text}"
-        )
-        return None
-
-
-def query_stashdb_performer_image(performer_stash_id):
-    query = """
-        query FindPerformer($id: ID!) {
-            findPerformer(id: $id) {
-                id
-                images {
-                    id
-                    url
-                }
-            }
-        }
-    """
-    result = gql_query(
-        config.STASHDB_ENDPOINT,
-        query,
-        {"id": performer_stash_id},
-        config.STASHDB_API_KEY,
-    )
-    if result:
-        performer_data = result["data"]["findPerformer"]
-        if (
-            performer_data
-            and performer_data["images"]
-            and len(performer_data["images"]) > 0
-        ):
-            return performer_data["images"][0]["url"]
-        else:
-            logger.error(
-                f"No image found for performer with Stash ID {performer_stash_id}."
-            )
-            return None
-
-    logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
-    return None
-
-
-def query_stashdb_studio_image(performer_stash_id):
-    query = """
-        query FindStudio($id: ID!) {
-            findStudio(id: $id) {
-                id
-                images {
-                    id
-                    url
-                }
-            }
-        }
-    """
-    result = gql_query(
-        config.STASHDB_ENDPOINT,
-        query,
-        {"id": performer_stash_id},
-        config.STASHDB_API_KEY,
-    )
-    if result:
-        performer_data = result["data"]["findStudio"]
-        if (
-            performer_data
-            and performer_data["images"]
-            and len(performer_data["images"]) > 0
-        ):
-            return performer_data["images"][0]["url"]
-        else:
-            logger.error(
-                f"No image found for studio with Stash ID {performer_stash_id}."
-            )
-            return None
-
-    logger.error(f"Failed to query studio with Stash ID {performer_stash_id}.")
-    return None
-
-
-def query_stashdb_scenes(performer_stash_ids):
-    query = """
-        query QueryScenes($stash_ids: [ID!]!, $page: Int!) {
-            queryScenes(
-                input: {
-                    performers: {
-                        value: $stash_ids,
-                        modifier: INCLUDES
-                    },
-                    per_page: 25,
-                    page: $page
-                }
-            ) {
-                scenes {
-                    id
-                    title
-                    details
-                    release_date
-                    urls {
-                        url
-                        site {
-                            name
-                            url
-                        }
-                    }
-                    studio {
-                        id
-                        name
-                        parent {
-                            id
-                            name
-                        }
-                    }
-                    images {
-                        id
-                        url
-                    }
-                    performers {
-                        performer {
-                            id
-                            name
-                        }
-                    }
-                    duration
-                    code
-                    tags {
-                        id
-                        name
-                    }
-                }
-                count
-            }
-        }
-    """
-    scenes = []
-    page = 1
-    total_scenes = None
-    while True:
-        result = gql_query(
-            config.STASHDB_ENDPOINT,
-            query,
-            {"stash_ids": performer_stash_ids, "page": page},
-            config.STASHDB_API_KEY,
-        )
-        if result:
-            scenes_data = result["data"]["queryScenes"]
-            scenes.extend(scenes_data["scenes"])
-            total_scenes = total_scenes or scenes_data["count"]
-            if len(scenes) >= total_scenes or len(scenes_data["scenes"]) < 25:
-                break
-            page += 1
-        else:
-            break
-
-    filtered_scenes = []
-    for scene in scenes:
-        if scene["tags"]:
-            exclude_tags = config.EXCLUDE_TAGS
-            if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
-                filtered_scenes.append(scene)
-
-    return filtered_scenes
+stashdb_client = StashDbClient(config.STASHDB_ENDPOINT, config.STASHDB_API_KEY)
 
 
 def compare_scenes(local_scenes, existing_missing_scenes, stashdb_scenes):
@@ -314,7 +306,7 @@ def get_or_create_studio_by_stash_id(studio, parent_studio_id: int | None = None
     if parent_studio_id:
         studio_create_input["parent_id"] = parent_studio_id
 
-    studio_image = query_stashdb_studio_image(stash_id)
+    studio_image = stashdb_client.query_studio_image(stash_id)
     if studio_image:
         studio_create_input["image"] = studio_image
 
@@ -357,7 +349,7 @@ def get_or_create_missing_performer(
         )
         return performer_id
 
-    image_url = query_stashdb_performer_image(performer_stash_id)
+    image_url = stashdb_client.query_performer_image(performer_stash_id)
 
     performer_in = {
         "name": performer_name,
@@ -488,7 +480,7 @@ def process_performer(
     local_scenes = local_performer_details["scenes"]
     existing_missing_scenes = missing_performer_details["scenes"]
 
-    stashdb_scenes = query_stashdb_scenes(performer_stash_id)
+    stashdb_scenes = stashdb_client.query_scenes(performer_stash_id)
 
     destroyed_scenes_stash_ids = []
     for local_scene in local_scenes:
@@ -612,9 +604,13 @@ def compare_performer_scenes():
     check_stash_instances_are_unique()
     check_performer_tags_are_configured()
 
-    raw_input = sys.stdin.read()
-    json_input = json.loads(raw_input)
-    logger.debug(f"Input: {json_input}")
+    from fakeInput import process_performers_json_input
+
+    json_input = process_performers_json_input
+
+    # raw_input = sys.stdin.read()
+    # json_input = json.loads(raw_input)
+    # logger.debug(f"Input: {json_input}")
 
     if (
         json_input
