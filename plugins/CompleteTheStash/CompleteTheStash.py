@@ -602,8 +602,15 @@ def check_stash_instances_are_unique():
         sys.exit(1)
 
 
+def check_performer_tags_are_configured():
+    if not config.PERFORMER_TAGS:
+        logger.error("No performer tags are configured.")
+        sys.exit(1)
+
+
 def compare_performer_scenes():
     check_stash_instances_are_unique()
+    check_performer_tags_are_configured()
 
     raw_input = sys.stdin.read()
     json_input = json.loads(raw_input)
