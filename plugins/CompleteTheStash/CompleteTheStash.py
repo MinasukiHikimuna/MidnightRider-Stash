@@ -622,9 +622,18 @@ def compare_performer_scenes():
     check_stash_instances_are_unique()
     check_performer_tags_are_configured()
 
-    from fakeInput import process_performers_json_input
+    if os.getenv("FAKE_INPUT") == "process_performers_json_input":
+        from fakeInput import process_performers_json_input
 
-    json_input = process_performers_json_input
+        json_input = process_performers_json_input
+    elif os.getenv("FAKE_INPUT") == "scene_update_json_input":
+        from fakeInput import scene_update_json_input
+
+        json_input = scene_update_json_input
+    else:
+        raw_input = sys.stdin.read()
+        json_input = json.loads(raw_input)
+        logger.debug(f"Input: {json_input}")
 
     if (
         json_input
