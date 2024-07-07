@@ -1,6 +1,0 @@
-name: Glassy - Front Page Animations and Blur
-description: A Glassy Add-On Module.
-version: 0.1
-ui:
-  css:
-    - Glassy - Front Page Animations and Blur.css

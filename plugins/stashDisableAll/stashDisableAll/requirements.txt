@@ -1,2 +1,0 @@
-stashapi-tools
-requests

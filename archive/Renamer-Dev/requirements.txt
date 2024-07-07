@@ -1,2 +1,0 @@
-stashapp-tools
-python-json-logger
