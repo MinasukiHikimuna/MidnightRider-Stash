@@ -1,8 +1,14 @@
-# Performer Scene Compare
+# Complete The Stash
 
 This plugin is designed to compare local performer scenes with those available on StashDB. Any missing scenes will be created in a separate, missing Stash instance.
 
 This plugin will not add, modify or delete anything in your main Stash instance. This plugin will read which performers you have tagged to be included in the comparison, get a list of all scenes of those performers from StashDB and create these missing scenes in the separate, missing Stash instance. Now you can easily see from that separate instance which scenes you are missing and you can filter those by site or by tags.
+
+## History
+
+This plugin was originally developed by Serechops but due to major overhaul it was split as a separate plugin.
+
+You can find the original plugin here: https://github.com/Serechops/Serechops-Stash/tree/main/plugins/performerSceneCompare#performer-scene-compare
 
 ## Features
 

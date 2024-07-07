@@ -1,10 +1,10 @@
-name: Performer Scene Compare
-description: Compares local performer scenes with StashDB and updates the local database.
+name: CompleteTheStash
+description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance.
 version: 0.2.0
-url: https://github.com/Serechops/Serechops-Stash
+url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
-  - "{pluginDir}/performerSceneCompare.py" # Adjust to your script's name and location
+  - "{pluginDir}/CompleteTheStash.py" # Adjust to your script's name and location
 interface: raw
 hooks:
   - name: PerformerCompare
