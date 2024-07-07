@@ -222,18 +222,83 @@ class StashDbClient:
         return filtered_scenes
 
 
-missing_stash = StashInterface(
-    {
-        "scheme": config.MISSING_GQL_SCHEME,
-        "host": config.MISSING_GQL_HOST,
-        "port": config.MISSING_GQL_PORT,
-        "apikey": config.MISSING_API_KEY,
-        "logger": logger,
-    }
-)
+class MissingStashClient:
+    def __init__(self, config, logger):
+        self.missing_stash = StashInterface(
+            {
+                "scheme": config.MISSING_GQL_SCHEME,
+                "host": config.MISSING_GQL_HOST,
+                "port": config.MISSING_GQL_PORT,
+                "apikey": config.MISSING_API_KEY,
+                "logger": logger,
+            }
+        )
+        self.logger = logger
+
+    def get_or_create_tag(self, tag_name: str) -> dict:
+        return self.missing_stash.find_tag({"name": tag_name}, True)
+
+    def create_scene(self, scene_data):
+        return self.missing_stash.create_scene(scene_data)
+
+    def destroy_scene(self, scene_id: int) -> None:
+        return self.missing_stash.destroy_scene(scene_id)
+
+    def find_performer(self, performer_id: int) -> dict:
+        create = False
+        fragment = """
+            id
+            name
+            stash_ids {
+                stash_id
+                endpoint
+            }
+            scenes {
+                id
+                title
+                stash_ids {
+                    stash_id
+                    endpoint
+                }
+            }
+            """
+        return self.missing_stash.find_performer(performer_id, create, fragment)
+
+    def find_studios(self, studio_filter):
+        return self.missing_stash.find_studios(studio_filter)
+
+    def create_studio(self, studio_data):
+        return self.missing_stash.create_studio(studio_data)
+
+    def create_performer(self, performer_data):
+        return self.missing_stash.create_performer(performer_data)
+
+    def find_scenes_by_stash_id(self, stash_id: str):
+        return self.missing_stash.find_scenes(
+            {
+                "stash_id_endpoint": {
+                    "stash_id": stash_id,
+                    "endpoint": config.STASHDB_ENDPOINT,
+                    "modifier": "EQUALS",
+                }
+            }
+        )
+
+    def find_performers_by_stash_id(self, stash_id: str):
+        return self.missing_stash.find_performers(
+            {
+                "stash_id_endpoint": {
+                    "stash_id": stash_id,
+                    "endpoint": config.STASHDB_ENDPOINT,
+                    "modifier": "EQUALS",
+                }
+            }
+        )
+
 
 stashdb_client = StashDbClient(config.STASHDB_ENDPOINT, config.STASHDB_API_KEY)
 local_stash_client = LocalStashClient(config, logger)
+missing_stash_client = MissingStashClient(config, logger)
 
 
 def compare_scenes(local_scenes, existing_missing_scenes, stashdb_scenes):
@@ -272,8 +337,8 @@ def create_scene(scene, performer_ids, studio_id):
     tag_ids = []
 
     for tag in tags:
-        tag_id = missing_stash.find_tag({"name": tag["name"]}, create=True)
-        tag_ids.append(tag_id["id"])
+        missing_tag = missing_stash_client.get_or_create_tag(tag["name"])
+        tag_ids.append(missing_tag["id"])
 
     try:
         # Ensure the date is in the correct format
@@ -286,7 +351,7 @@ def create_scene(scene, performer_ids, studio_id):
         )
         return None
 
-    result = missing_stash.create_scene(
+    result = missing_stash_client.create_scene(
         {
             "title": title,
             "code": code,
@@ -312,7 +377,7 @@ def get_or_create_studio_by_stash_id(studio, parent_studio_id: int | None = None
     stash_id = studio["id"]
     studio_name = studio["name"]
 
-    studios = missing_stash.find_studios(
+    studios = missing_stash_client.find_studios(
         {
             "name": {
                 "value": studio_name,
@@ -348,7 +413,7 @@ def get_or_create_studio_by_stash_id(studio, parent_studio_id: int | None = None
         studio_create_input["image"] = studio_image
 
     logger.debug(f"Creating studio: {studio_name}")
-    studio = missing_stash.create_studio(studio_create_input)
+    studio = missing_stash_client.create_studio(studio_create_input)
     if studio:
         studio_id = studio["id"]
         logger.info(f"Studio created: {studio_name}")
@@ -361,18 +426,8 @@ def get_or_create_studio_by_stash_id(studio, parent_studio_id: int | None = None
 def get_or_create_missing_performer(
     performer_name: str, performer_stash_id: str
 ) -> int:
-    existing_performers = missing_stash.find_performers(
-        {
-            "name": {
-                "value": performer_name,
-                "modifier": "EQUALS",
-            },
-            "stash_id_endpoint": {
-                "stash_id": performer_stash_id,
-                "endpoint": config.STASHDB_ENDPOINT,
-                "modifier": "EQUALS",
-            },
-        }
+    existing_performers = missing_stash_client.find_performers_by_stash_id(
+        performer_stash_id
     )
     if existing_performers and len(existing_performers) > 0:
         if len(existing_performers) > 1:
@@ -397,7 +452,7 @@ def get_or_create_missing_performer(
     if image_url:
         performer_in["image"] = image_url
 
-    performer = missing_stash.create_performer(performer_in)
+    performer = missing_stash_client.create_performer(performer_in)
     if performer:
         logger.info(f"Performer created: {performer_name}")
         return performer["id"]
@@ -474,25 +529,8 @@ def process_performer(
     )
 
     missing_performer_id = missing_performers_by_stash_id.get(performer_stash_id)
-    missing_performer_details = missing_stash.find_performer(
-        missing_performer_id,
-        False,
-        """
-        id
-        name
-        stash_ids {
-            stash_id
-            endpoint
-        }
-        scenes {
-            id
-            title
-            stash_ids {
-                stash_id
-                endpoint
-            }
-        }
-        """,
+    missing_performer_details = missing_stash_client.find_performer(
+        missing_performer_id
     )
 
     local_scenes = local_performer_details["scenes"]
@@ -520,7 +558,7 @@ def process_performer(
                 None,
             )
             if scene_stash_id == existing_missing_scene_stash_id:
-                missing_stash.destroy_scene(existing_missing_scene["id"])
+                missing_stash_client.destroy_scene(existing_missing_scene["id"])
                 destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
                 logger.debug(
                     f"Scene {existing_missing_scene['title']} (ID: {existing_missing_scene['id']}) destroyed."
@@ -580,15 +618,7 @@ def process_performer(
 
 
 def process_updated_scene(stash_id: str):
-    scenes = missing_stash.find_scenes(
-        {
-            "stash_id_endpoint": {
-                "stash_id": stash_id,
-                "endpoint": config.STASHDB_ENDPOINT,
-                "modifier": "EQUALS",
-            }
-        }
-    )
+    scenes = missing_stash_client.find_scenes_by_stash_id(stash_id)
     if scenes and len(scenes) > 0:
         if len(scenes) > 1:
             logger.warning(
@@ -596,7 +626,7 @@ def process_updated_scene(stash_id: str):
             )
 
         scene = scenes[0]
-        missing_stash.destroy_scene(scene["id"])
+        missing_stash_client.destroy_scene(scene["id"])
         logger.debug(f"Scene {scene['title']} (ID: {scene['id']}) destroyed.")
 
 
@@ -622,18 +652,14 @@ def compare_performer_scenes():
     check_stash_instances_are_unique()
     check_performer_tags_are_configured()
 
-    if os.getenv("FAKE_INPUT") == "process_performers_json_input":
-        from fakeInput import process_performers_json_input
+    # if True:
+    from fakeInput import fake_input
 
-        json_input = process_performers_json_input
-    elif os.getenv("FAKE_INPUT") == "scene_update_json_input":
-        from fakeInput import scene_update_json_input
-
-        json_input = scene_update_json_input
-    else:
-        raw_input = sys.stdin.read()
-        json_input = json.loads(raw_input)
-        logger.debug(f"Input: {json_input}")
+    json_input = fake_input["process_performers_json_input"]
+    # else:
+    # raw_input = sys.stdin.read()
+    # json_input = json.loads(raw_input)
+    # logger.debug(f"Input: {json_input}")
 
     if (
         json_input
