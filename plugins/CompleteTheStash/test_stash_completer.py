@@ -27,12 +27,30 @@ class TestStashCompleter(unittest.TestCase):
 
     def test_compare_scenes(self):
         local_scenes = [
-            {"stash_ids": [{"stash_id": "1", "endpoint": "http://example.com"}]}
+            {
+                "stash_ids": [
+                    {
+                        "stash_id": "11111111-1111-1111-1111-111111111111",
+                        "endpoint": "http://example.com",
+                    }
+                ]
+            }
         ]
         existing_missing_scenes = [
-            {"stash_ids": [{"stash_id": "2", "endpoint": "http://example.com"}]}
+            {
+                "stash_ids": [
+                    {
+                        "stash_id": "22222222-2222-2222-2222-222222222222",
+                        "endpoint": "http://example.com",
+                    }
+                ]
+            }
         ]
-        stashdb_scenes = [{"id": "3"}, {"id": "1"}]
+        stashdb_scenes = [
+            {"id": "11111111-1111-1111-1111-111111111111"},
+            {"id": "22222222-2222-2222-2222-222222222222"},
+            {"id": "33333333-3333-3333-3333-333333333333"},
+        ]
 
         self.config.STASHDB_ENDPOINT = "http://example.com"
 
@@ -41,7 +59,9 @@ class TestStashCompleter(unittest.TestCase):
         )
 
         self.assertEqual(len(new_missing_scenes), 1)
-        self.assertEqual(new_missing_scenes[0]["id"], "3")
+        self.assertEqual(
+            new_missing_scenes[0]["id"], "33333333-3333-3333-3333-333333333333"
+        )
 
     def test_create_scene(self):
         scene = {
