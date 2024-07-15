@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import xxhash
@@ -21,20 +22,10 @@ def get_xxhash_of_file(file_path):
 
 # Example usage
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    sys.path.append(script_dir)
+    raw_input = sys.stdin.read()
+    json_input = json.loads(raw_input)
 
-    import config
-
-    stash = StashInterface(
-        {
-            "scheme": config.GQL_SCHEME,
-            "host": config.GQL_HOST,
-            "port": config.GQL_PORT,
-            "apikey": config.API_KEY,
-            "logger": logger,
-        }
-    )
+    stash = StashInterface(json_input["server_connection"])
 
     fragment = """
             id
