@@ -70,6 +70,10 @@ if __name__ == "__main__":
                     fp["type"] == "xxhash" for fp in file["fingerprints"]
                 ):
                     file_path = file["path"]
+                    if not os.path.exists(file_path):
+                        logger.warning(f"File not found: {file_path}")
+                        continue
+
                     xxhash_value = get_xxhash_of_file(file_path)
                     logger.info(f"File: {file_path}, xxhash: {xxhash_value}")
 
