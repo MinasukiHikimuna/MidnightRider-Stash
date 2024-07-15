@@ -1,0 +1,13 @@
+name: HashTheStash
+description: Calculates additional fingerprints for scenes.
+version: 0.1
+url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
+exec:
+  - python
+  - "{pluginDir}/HashTheStash.py" # Adjust to your script's name and location
+interface: raw
+tasks:
+  - name: Hash The Stash
+    description: Calculates additional fingerprints for scenes.
+    defaultArgs:
+      mode: calculate_hashes
