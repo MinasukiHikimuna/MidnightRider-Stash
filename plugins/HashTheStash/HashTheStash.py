@@ -47,17 +47,36 @@ if __name__ == "__main__":
                 }
             }
     """
-    scenes = stash.find_scenes({}, {}, "", fragment)
 
-    for scene in scenes:
-        for file in scene["files"]:
-            if "fingerprints" not in file or not any(
-                fp["type"] == "xxhash" for fp in file["fingerprints"]
-            ):
-                file_path = file["path"]
-                xxhash_value = get_xxhash_of_file(file_path)
-                print(f"File: {file_path}, xxhash: {xxhash_value}")
+    per_page = 25
+    page = 1
+    total_scenes = 0
 
-                stash.file_set_fingerprints(
-                    file["id"], [{"type": "xxhash", "value": xxhash_value}]
-                )
+    while True:
+        scenes_result = stash.find_scenes(
+            {}, {"per_page": per_page, "page": page}, "", fragment, get_count=True
+        )
+        scenes_count = scenes_result[0]
+        scenes = scenes_result[1]
+
+        if not scenes:
+            break
+
+        total_scenes += len(scenes)
+
+        for scene in scenes:
+            for file in scene["files"]:
+                if "fingerprints" not in file or not any(
+                    fp["type"] == "xxhash" for fp in file["fingerprints"]
+                ):
+                    file_path = file["path"]
+                    xxhash_value = get_xxhash_of_file(file_path)
+                    logger.info(f"File: {file_path}, xxhash: {xxhash_value}")
+
+                    stash.file_set_fingerprints(
+                        file["id"], [{"type": "xxhash", "value": xxhash_value}]
+                    )
+
+        page += 1
+
+    logger.info(f"Processed a total of {total_scenes} scenes.")
