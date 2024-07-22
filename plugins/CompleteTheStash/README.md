@@ -17,7 +17,34 @@ You can find the original plugin here: https://github.com/Serechops/Serechops-St
 - Missing scenes can be excluded by tags e.g. for avoiding compilations.
 - Missing scenes are automatically deleted from the missing Stash instance when you add those to your main Stash.
 
-## Requirements
+## Configuration
+
+All configuration is done in Plugins settings in your primary Stash.
+
+Mandatory configuration values:
+
+- Missing Stash address
+  - URL of the Stash instance where missing scenes are created.
+- Missing Stash API key
+  - API key of the Stash instance where missing scenes are created.
+- Include performers with tags
+  - Tags of the performers selected for processing. Separate multiple tags with commas.
+
+Optional configuration values:
+
+- Exclude scenes with tags
+  - Tags of the scenes to exclude from processing, e.g. Compilation. Separate multiple tags with commas.
+
+## Usage
+
+The script is designed to be executed as a plugin within Stash. It is triggered by:
+
+- Executing "Process performers" task manually. This will create, update and possibly delete missing scenes.
+- Local scene being updated. If a previously missing scene is now found in local Stash, it is deleted from missing Stash.
+
+The separate task for longer running processing is critical for good user experience. For example if performer processing was triggered when a performer is tagged with Completionist, local Stash UI would look like being stuck until all, possibly thousands of scenes for that performer would have been processed.
+
+## Requirements for development
 
 `pip install stashapp-tools`
 
@@ -32,33 +59,3 @@ You can tests like:
 ```
 pytest
 ```
-
-## Configuration
-
-```
-  LOCAL_GQL_SCHEME = "http"
-  LOCAL_GQL_HOST = "localhost"
-  LOCAL_GQL_PORT = 9999
-  LOCAL_API_KEY = ""  # Leave blank if you don't have credentials on your Stash.
-
-  MISSING_GQL_SCHEME = "http"
-  MISSING_GQL_HOST = "localhost"
-  MISSING_GQL_PORT = 6969
-  MISSING_API_KEY = ""  # Leave blank if you don't have credentials on your missing Stash.
-
-  STASHDB_ENDPOINT = "https://stashdb.org/graphql"
-  STASHDB_API_KEY = "your_stashdb_api_key"  # Replace with your StashDB API key
-
-  PERFORMER_TAGS = ["Completionist"]  # Performers with these tags will be selected.
-
-  EXCLUDE_TAGS = []  # Scenes containing any of these tags will be excluded.
-```
-
-## Usage
-
-The script is designed to be executed as a plugin within Stash. It is triggered by:
-
-- Executing "Process performers" task manually. This will create, update and possibly delete missing scenes.
-- Local scene being updated. If a previously missing scene is now found in local Stash, it is deleted from missing Stash.
-
-The separate task for longer running processing is critical for good user experience. For example if performer processing was triggered when a performer is tagged with Completionist, local Stash UI would look like being stuck until all, possibly thousands of scenes for that performer would have been processed.
