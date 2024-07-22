@@ -21,10 +21,16 @@ You can find the original plugin here: https://github.com/Serechops/Serechops-St
 
 `pip install stashapp-tools`
 
-For development Python's unittest is used. You can tests like:
+For development Python's pytest is used. You need to install it:
 
 ```
-python -m unittest
+pip install -U pytest pytest-mock
+```
+
+You can tests like:
+
+```
+pytest
 ```
 
 ## Configuration

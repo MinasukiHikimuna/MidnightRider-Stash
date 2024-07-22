@@ -28,14 +28,14 @@ class StashCompleter:
             stash_id["stash_id"]
             for scene in local_scenes
             for stash_id in scene["stash_ids"]
-            if stash_id.get("endpoint") == self.config.STASHDB_ENDPOINT
+            if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
         }
         self.logger.trace(f"Local scene IDs: {local_scene_ids}")
         existing_missing_scene_ids = {
             stash_id["stash_id"]
             for scene in existing_missing_scenes
             for stash_id in scene["stash_ids"]
-            if stash_id.get("endpoint") == self.config.STASHDB_ENDPOINT
+            if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
         }
         self.logger.trace(f"Existing missing scene IDs: {existing_missing_scene_ids}")
 
@@ -84,7 +84,10 @@ class StashCompleter:
                 "tag_ids": tag_ids,
                 "cover_image": cover_image,
                 "stash_ids": [
-                    {"endpoint": self.config.STASHDB_ENDPOINT, "stash_id": stash_id}
+                    {
+                        "endpoint": self.config.get("stashboxEndpoint"),
+                        "stash_id": stash_id,
+                    }
                 ],
             }
         )
@@ -109,7 +112,7 @@ class StashCompleter:
                 },
                 "stash_id_endpoint": {
                     "stash_id": stash_id,
-                    "endpoint": self.config.STASHDB_ENDPOINT,
+                    "endpoint": self.config.get("stashboxEndpoint"),
                     "modifier": "EQUALS",
                 },
             }
@@ -129,7 +132,7 @@ class StashCompleter:
         studio_create_input = {
             "name": studio_name,
             "stash_ids": [
-                {"stash_id": stash_id, "endpoint": self.config.STASHDB_ENDPOINT}
+                {"stash_id": stash_id, "endpoint": self.config.get("stashboxEndpoint")}
             ],
         }
 
@@ -175,7 +178,7 @@ class StashCompleter:
             "stash_ids": [
                 {
                     "stash_id": performer_stash_id,
-                    "endpoint": self.config.STASHDB_ENDPOINT,
+                    "endpoint": self.config.get("stashboxEndpoint"),
                 }
             ],
         }
@@ -190,7 +193,7 @@ class StashCompleter:
         return None
 
     def find_selected_local_performers(self):
-        selected_performer_tags = self.config.PERFORMER_TAGS
+        selected_performer_tags = self.config.get("performerTags")
         selected_performer_tag_ids = []
         for tag in selected_performer_tags:
             tag_id = self.local_stash_client.find_tag(tag)
@@ -223,7 +226,7 @@ class StashCompleter:
                 (
                     sid["stash_id"]
                     for sid in local_performer["stash_ids"]
-                    if sid.get("endpoint") == self.config.STASHDB_ENDPOINT
+                    if sid.get("endpoint") == self.config.get("stashboxEndpoint")
                 ),
                 None,
             )
@@ -254,7 +257,7 @@ class StashCompleter:
             (
                 sid["stash_id"]
                 for sid in local_performer_details["stash_ids"]
-                if sid.get("endpoint") == self.config.STASHDB_ENDPOINT
+                if sid.get("endpoint") == self.config.get("stashboxEndpoint")
             ),
             None,
         )
@@ -275,7 +278,7 @@ class StashCompleter:
                 (
                     sid["stash_id"]
                     for sid in local_scene["stash_ids"]
-                    if sid.get("endpoint") == self.config.STASHDB_ENDPOINT
+                    if sid.get("endpoint") == self.config.get("stashboxEndpoint")
                 ),
                 None,
             )
@@ -284,7 +287,7 @@ class StashCompleter:
                     (
                         sid["stash_id"]
                         for sid in existing_missing_scene["stash_ids"]
-                        if sid.get("endpoint") == self.config.STASHDB_ENDPOINT
+                        if sid.get("endpoint") == self.config.get("stashboxEndpoint")
                     ),
                     None,
                 )

@@ -1,6 +1,6 @@
 name: CompleteTheStash
 description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance.
-version: 0.2.1
+version: 0.3.0
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -16,3 +16,20 @@ tasks:
     description: Create missing scenes of performers to another Stash instance
     defaultArgs:
       mode: process_performers
+settings:
+  missingStashAddress:
+    displayName: Missing Stash address
+    description: URL of the Stash instance where missing scenes are created.
+    type: STRING
+  missingStashApiKey:
+    displayName: Missing Stash API key
+    description: API key of the Stash instance where missing scenes are created.
+    type: STRING
+  performerTags:
+    displayName: Include performers with tags
+    description: Tags of the performers selected for processing. Separate multiple tags with commas.
+    type: STRING
+  sceneExcludeTags:
+    displayName: Exclude scenes with tags
+    description: Tags of the scenes to exclude from processing, e.g. Compilation. Separate multiple tags with commas.
+    type: STRING

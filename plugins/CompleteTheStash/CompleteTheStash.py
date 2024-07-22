@@ -1,89 +1,126 @@
 import json
 import os
 import sys
-import stashapi.log as logger
-from datetime import datetime
+from urllib.parse import urlparse
 
+import stashapi.log as logger
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
 from StashDbClient import StashDbClient
 from StashCompleter import StashCompleter
 
 
-def check_stash_instances_are_unique(config):
-    if (
-        config.LOCAL_GQL_SCHEME == config.MISSING_GQL_SCHEME
-        and config.LOCAL_GQL_HOST == config.MISSING_GQL_HOST
-        and config.LOCAL_GQL_PORT == config.MISSING_GQL_PORT
-    ):
+def parse_url(url):
+    parsed_url = urlparse(url)
+    scheme = parsed_url.scheme
+    host = parsed_url.hostname
+    port = parsed_url.port or (443 if scheme == "https" else 80)
+    return scheme, host, port
+
+
+def check_stash_instances_are_unique(local_configuration, missing_configuration):
+    local_api_key = local_configuration.get("general", {}).get("apiKey")
+    missing_api_key = missing_configuration.get("general", {}).get("apiKey")
+    if local_api_key == missing_api_key:
         raise ValueError(
-            "Local and missing Stash instances are the same. Please create a different instance for missing Stash."
+            "Local and missing Stash instances have the same API key which indicates both local and missing Stash instances are the same. "
+            "Please create a different instance for missing Stash."
         )
 
 
-def check_performer_tags_are_configured(config):
-    if not config.PERFORMER_TAGS:
-        raise ValueError("No performer tags are configured.")
-
-
-def check_config(config):
-    check_stash_instances_are_unique(config)
-    check_performer_tags_are_configured(config)
-
-
-def compare_performer_scenes(config):
-    check_config(config)
-
-    stashdb_client = StashDbClient(
-        config.STASHDB_ENDPOINT, config.STASHDB_API_KEY, config.EXCLUDE_TAGS
-    )
-    local_stash_client = LocalStashClient(
-        config.LOCAL_GQL_SCHEME,
-        config.LOCAL_GQL_HOST,
-        config.LOCAL_GQL_PORT,
-        config.LOCAL_API_KEY,
-        logger,
-    )
-    missing_stash_client = MissingStashClient(
-        config.MISSING_GQL_SCHEME,
-        config.MISSING_GQL_HOST,
-        config.MISSING_GQL_PORT,
-        config.MISSING_API_KEY,
-        config.STASHDB_ENDPOINT,
-        logger,
-    )
-    stash_completer = StashCompleter(
-        config, logger, stashdb_client, local_stash_client, missing_stash_client
-    )
-
+def get_json_input():
     if os.getenv("FAKE_INPUT"):
         from fakeInput import fake_input
 
-        json_input = fake_input[os.getenv("FAKE_INPUT")]
+        return fake_input[os.getenv("FAKE_INPUT")]
     else:
         raw_input = sys.stdin.read()
-        json_input = json.loads(raw_input)
-        logger.debug(f"Input: {json_input}")
+        return json.loads(raw_input)
 
-    if (
-        json_input
-        and "args" in json_input
-        and "mode" in json_input["args"]
-        and json_input["args"]["mode"] == "process_performers"
-    ):
+
+def get_stashdb_stash_box(local_configuration, config):
+    stash_boxes = local_configuration.get("general", {}).get("stashBoxes")
+    if not stash_boxes:
+        raise ValueError("No stash boxes are configured.")
+    stashdb_stash_box = next(
+        (
+            box
+            for box in stash_boxes
+            if box.get("endpoint") == config.get("stashboxEndpoint")
+        ),
+        None,
+    )
+    if not stashdb_stash_box:
+        raise ValueError("StashDB stash box is not configured.")
+    return stashdb_stash_box
+
+
+def create_stashdb_client(local_configuration, stashdb_stash_box):
+    scene_exclude_tags = (
+        local_configuration.get("plugins", {})
+        .get("CompleteTheStash", {})
+        .get("sceneExcludeTags", "")
+        .split(",")
+    )
+    return StashDbClient(
+        stashdb_stash_box["endpoint"],
+        stashdb_stash_box["api_key"],
+        scene_exclude_tags,
+    )
+
+
+def get_complete_the_stash_config(local_configuration):
+    plugins_configuration = local_configuration.get("plugins", {})
+    complete_the_stash_config = plugins_configuration.get("CompleteTheStash")
+    if not complete_the_stash_config:
+        raise ValueError("CompleteTheStash plugin is not configured.")
+
+    if not complete_the_stash_config.get("missingStashAddress"):
+        raise ValueError(
+            "Missing Stash URL is not configured. Please set in Plugins configuration."
+        )
+    if not complete_the_stash_config.get("missingStashApiKey"):
+        raise ValueError(
+            "Missing Stash API key is not configured. Please set in Plugins configuration."
+        )
+    if not complete_the_stash_config.get("performerTags"):
+        raise ValueError(
+            "Performer tags are not configured. Please set in Plugins configuration."
+        )
+
+    return complete_the_stash_config
+
+
+def create_missing_stash_client(complete_the_stash_config, config):
+    missing_stash_url = complete_the_stash_config.get("missingStashAddress")
+    if not missing_stash_url:
+        raise ValueError("Missing Stash URL is not configured.")
+    missing_stash_api_key = complete_the_stash_config.get("missingStashApiKey")
+    if not missing_stash_api_key:
+        raise ValueError("Missing Stash API key is not configured.")
+    scheme, host, port = parse_url(missing_stash_url)
+    return MissingStashClient(
+        scheme,
+        host,
+        port,
+        missing_stash_api_key,
+        config.get("stashboxEndpoint"),
+        logger,
+    )
+
+
+def process_input(json_input, stash_completer, config):
+    if json_input.get("args", {}).get("mode") == "process_performers":
         stash_completer.process_performers()
     elif (
-        json_input
-        and "args" in json_input
-        and "hookContext" in json_input["args"]
-        and "type" in json_input["args"]["hookContext"]
-        and json_input["args"]["hookContext"]["type"] == "Scene.Update.Post"
+        json_input.get("args", {}).get("hookContext", {}).get("type")
+        == "Scene.Update.Post"
     ):
         stash_id = next(
             (
                 sid["stash_id"]
                 for sid in json_input["args"]["hookContext"]["input"]["stash_ids"]
-                if sid.get("endpoint") == config.STASHDB_ENDPOINT
+                if sid.get("endpoint") == config.get("stashboxEndpoint")
             ),
             None,
         )
@@ -92,15 +129,48 @@ def compare_performer_scenes(config):
         logger.error(f"Invalid input: {json_input}")
 
 
+def execute():
+    json_input = get_json_input()
+    logger.debug(f"Input: {json_input}")
+
+    local_stash_client = LocalStashClient(json_input["server_connection"], logger)
+    local_configuration = local_stash_client.get_configuration()
+    logger.debug(f"Local configuration: {local_configuration}")
+
+    performer_tags = (
+        local_configuration.get("plugins", {})
+        .get("CompleteTheStash", {})
+        .get("performerTags")
+    ).split(",")
+    config = {
+        "performerTags": performer_tags,
+        "stashboxEndpoint": "https://stashdb.org/graphql",
+    }
+
+    complete_the_stash_config = get_complete_the_stash_config(local_configuration)
+
+    missing_stash_client = create_missing_stash_client(
+        complete_the_stash_config, config
+    )
+    missing_configuration = missing_stash_client.get_configuration()
+
+    check_stash_instances_are_unique(local_configuration, missing_configuration)
+
+    stashdb_stash_box = get_stashdb_stash_box(local_configuration, config)
+    stashdb_client = create_stashdb_client(local_configuration, stashdb_stash_box)
+
+    stash_completer = StashCompleter(
+        config,
+        logger,
+        stashdb_client,
+        local_stash_client,
+        missing_stash_client,
+    )
+    process_input(json_input, stash_completer, config)
+
+
 if __name__ == "__main__":
-    # Ensure the script can locate config.py
     script_dir = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(script_dir)
 
-    import config  # Import the configuration
-
-    try:
-        compare_performer_scenes(config)
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        sys.exit(1)
+    execute()

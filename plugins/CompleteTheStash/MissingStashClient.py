@@ -15,6 +15,9 @@ class MissingStashClient:
         )
         self.logger = logger
 
+    def get_configuration(self):
+        return self.missing_stash.get_configuration()
+
     def get_or_create_tag(self, tag_name: str) -> dict:
         return self.missing_stash.find_tag({"name": tag_name}, True)
 

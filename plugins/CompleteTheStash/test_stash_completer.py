@@ -1,6 +1,6 @@
 import pytest
-from unittest.mock import MagicMock
-from datetime import datetime
+from unittest.mock import create_autospec
+import stashapi.log as logger
 from StashCompleter import StashCompleter
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
@@ -8,12 +8,12 @@ from StashDbClient import StashDbClient
 
 
 @pytest.fixture
-def stash_completer():
-    config = MagicMock()
-    logger = MagicMock()
-    stashdb_client = MagicMock(spec=StashDbClient)
-    local_stash_client = MagicMock(spec=LocalStashClient)
-    missing_stash_client = MagicMock(spec=MissingStashClient)
+def stash_completer(mocker):
+    config = mocker.MagicMock()
+    logger = mocker.MagicMock()
+    stashdb_client = create_autospec(StashDbClient)
+    local_stash_client = create_autospec(LocalStashClient)
+    missing_stash_client = create_autospec(MissingStashClient)
 
     return StashCompleter(
         config,
@@ -51,7 +51,7 @@ def test_compare_scenes(stash_completer):
         {"id": "33333333-3333-3333-3333-333333333333"},
     ]
 
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+    stash_completer.config.get.return_value = "http://example.com"
 
     new_missing_scenes = stash_completer.compare_scenes(
         local_scenes, existing_missing_scenes, stashdb_scenes
@@ -61,7 +61,7 @@ def test_compare_scenes(stash_completer):
     assert new_missing_scenes[0]["id"] == "33333333-3333-3333-3333-333333333333"
 
 
-def test_create_scene(stash_completer):
+def test_create_scene(stash_completer, mocker):
     scene = {
         "code": "123",
         "title": "Test Scene",
@@ -75,7 +75,7 @@ def test_create_scene(stash_completer):
     performer_ids = [1, 2]
     studio_id = 1
 
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+    stash_completer.config.get.return_value = "http://example.com"
     stash_completer.missing_stash_client.get_or_create_tag.side_effect = [
         {"id": 1},
         {"id": 2},
@@ -92,7 +92,7 @@ def test_get_or_create_studio_by_stash_id(stash_completer):
     studio = {"id": "1", "name": "Test Studio"}
     parent_studio_id = None
 
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+    stash_completer.config.get.return_value = "http://example.com"
     stash_completer.missing_stash_client.find_studios.return_value = []
 
     stash_completer.stashdb_client.query_studio_image.return_value = (
@@ -112,7 +112,7 @@ def test_get_or_create_missing_performer(stash_completer):
     performer_name = "Test Performer"
     performer_stash_id = "1"
 
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+    stash_completer.config.get.return_value = "http://example.com"
     stash_completer.missing_stash_client.find_performers_by_stash_id.return_value = []
     stash_completer.stashdb_client.query_performer_image.return_value = (
         "http://example.com/image.jpg"
@@ -140,8 +140,8 @@ def test_find_selected_local_performers(stash_completer):
     assert performers[0]["id"] == 1
 
 
-def test_process_performers(stash_completer):
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+def test_process_performers(stash_completer, mocker):
+    stash_completer.config.get.return_value = "http://example.com"
 
     selected_performers = [
         {
@@ -150,11 +150,11 @@ def test_process_performers(stash_completer):
             "stash_ids": [{"stash_id": "1", "endpoint": "http://example.com"}],
         }
     ]
-    stash_completer.find_selected_local_performers = MagicMock(
+    stash_completer.find_selected_local_performers = mocker.MagicMock(
         return_value=selected_performers
     )
-    stash_completer.get_or_create_missing_performer = MagicMock(return_value=1)
-    stash_completer.process_performer = MagicMock()
+    stash_completer.get_or_create_missing_performer = mocker.MagicMock(return_value=1)
+    stash_completer.process_performer = mocker.MagicMock()
 
     stash_completer.process_performers()
 
@@ -165,8 +165,8 @@ def test_process_performers(stash_completer):
     stash_completer.process_performer.assert_called_once_with(1, {"1": 1})
 
 
-def test_process_performer(stash_completer):
-    stash_completer.config.STASHDB_ENDPOINT = "http://example.com"
+def test_process_performer(stash_completer, mocker):
+    stash_completer.config.get.return_value = "http://example.com"
 
     local_performer_id = 1
     missing_performers_by_stash_id = {"1": 1}
