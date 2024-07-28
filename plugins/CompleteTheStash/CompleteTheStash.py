@@ -2,12 +2,15 @@ import json
 import os
 import sys
 from urllib.parse import urlparse
+import dotenv
 
 import stashapi.log as logger
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
 from StashDbClient import StashDbClient
 from StashCompleter import StashCompleter
+
+dotenv.load_dotenv()
 
 
 def parse_url(url):
@@ -159,7 +162,16 @@ def execute():
     json_input = get_json_input()
     logger.debug(f"Input: {json_input}")
 
-    local_stash_client = LocalStashClient(json_input["server_connection"], logger)
+    if os.getenv("FAKE_INPUT"):
+        local_stash_client = LocalStashClient.create_with_api_key(
+            os.getenv("LOCAL_STASH_SCHEME"),
+            os.getenv("LOCAL_STASH_HOST"),
+            os.getenv("LOCAL_STASH_PORT"),
+            os.getenv("LOCAL_STASH_API_KEY"),
+            logger,
+        )
+    else:
+        local_stash_client = LocalStashClient(json_input["server_connection"], logger)
     local_configuration = local_stash_client.get_configuration()
     logger.debug(f"Local configuration: {local_configuration}")
 

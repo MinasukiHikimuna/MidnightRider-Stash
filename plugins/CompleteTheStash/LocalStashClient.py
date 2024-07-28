@@ -2,9 +2,25 @@ from stashapi.stashapp import StashInterface
 
 
 class LocalStashClient:
-    def __init__(self, server_connection, logger):
+    def __init__(self, server_connection: dict, logger):
         self.local_stash = StashInterface(server_connection)
         self.logger = logger
+
+    @staticmethod
+    def create_with_server_connect(server_connection: dict, logger):
+        return LocalStashClient(server_connection, logger)
+
+    @staticmethod
+    def create_with_api_key(scheme: str, host: str, port: int, api_key: str, logger):
+        return LocalStashClient(
+            {
+                "scheme": scheme,
+                "host": host,
+                "port": port,
+                "apikey": api_key,
+            },
+            logger,
+        )
 
     def get_configuration(self):
         return self.local_stash.get_configuration()

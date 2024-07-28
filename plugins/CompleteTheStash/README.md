@@ -59,3 +59,22 @@ You can tests like:
 ```
 pytest
 ```
+
+To run from Visual Studio Code with debugger
+
+- with your actual local Stash, use launch.json.
+- with E2E tests, debug E2E tests from Testing tab.
+
+Both utilize .env file.
+
+```
+# For running with your actual local stash, following are required.
+LOCAL_STASH_SCHEME=   #
+LOCAL_STASH_HOST=
+LOCAL_STASH_PORT=
+LOCAL_STASH_API_KEY=
+
+# For E2E tests, following are required.
+STASH_BIN=            # Path to Stash binary
+STASH_API_KEY=        # API key to StashDB, needed for E2E tests
+```
