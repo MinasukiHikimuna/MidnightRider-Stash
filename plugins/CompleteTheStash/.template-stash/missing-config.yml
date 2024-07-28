@@ -1,4 +1,4 @@
-api_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38
+api_key: REPLACE_ME
 blobs_path: blobs
 blobs_storage: FILESYSTEM
 cache: cache

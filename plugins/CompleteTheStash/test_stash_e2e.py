@@ -18,6 +18,10 @@ assert (
 ), "STASH_API_KEY environment variable is not set"
 
 
+local_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"
+missing_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"
+
+
 def start_stash_process(executable_path, working_dir) -> subprocess.Popen[bytes]:
     return subprocess.Popen([executable_path, "--nobrowser"], cwd=working_dir)
 
@@ -101,7 +105,6 @@ def local_stash_instance():
     plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
     executable_path = os.getenv("STASH_BIN")
     local_config_path = os.path.join(template_dir, "local-config.yml")
-    local_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"
 
     if os.path.exists(local_working_dir):
         shutil.rmtree(local_working_dir)
@@ -109,8 +112,12 @@ def local_stash_instance():
 
     with open(local_config_path, "r") as file:
         local_config = yaml.safe_load(file)
-    local_config["apikey"] = local_apikey
+    local_config["api_key"] = local_api_key
     local_config["stash_boxes"][0]["apikey"] = os.getenv("STASH_API_KEY")
+    local_config["plugins"]["settings"]["CompleteTheStash"][
+        "missingStashApiKey"
+    ] = missing_api_key
+
     with open(os.path.join(local_working_dir, "config.yml"), "w") as file:
         yaml.safe_dump(local_config, file)
 
@@ -126,7 +133,7 @@ def local_stash_instance():
             "host": "localhost",
             "port": 6661,
             "logger": log,
-            "ApiKey": local_apikey,
+            "ApiKey": local_api_key,
         }
     )
 
@@ -140,7 +147,6 @@ def missing_stash_instance():
     missing_working_dir = os.path.join(test_dir, ".missing-stash")
     executable_path = os.getenv("STASH_BIN")
     missing_config_path = os.path.join(template_dir, "missing-config.yml")
-    missing_apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"
 
     if os.path.exists(missing_working_dir):
         shutil.rmtree(missing_working_dir)
@@ -148,7 +154,7 @@ def missing_stash_instance():
 
     with open(missing_config_path, "r") as file:
         missing_config = yaml.safe_load(file)
-    missing_config["apikey"] = missing_apikey
+    missing_config["api_key"] = missing_api_key
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("STASH_API_KEY")
     with open(os.path.join(missing_working_dir, "config.yml"), "w") as file:
         yaml.safe_dump(missing_config, file)
@@ -160,7 +166,7 @@ def missing_stash_instance():
             "scheme": "http",
             "host": "localhost",
             "port": 6662,
-            "apikey": missing_apikey,
+            "apikey": missing_api_key,
             "logger": log,
         }
     )

@@ -1,4 +1,4 @@
-api_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc
+api_key: REPLACE_ME
 blobs_path: blobs
 blobs_storage: FILESYSTEM
 cache: cache
@@ -26,7 +26,7 @@ plugins:
   settings:
     CompleteTheStash:
       missingStashAddress: http://localhost:6662
-      missingStashApiKey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38
+      missingStashApiKey: REPLACE_ME
       performerTags: Completionist
 plugins_path: plugins
 port: 6661
