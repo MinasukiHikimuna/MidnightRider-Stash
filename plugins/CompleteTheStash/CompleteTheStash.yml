@@ -1,6 +1,6 @@
 name: CompleteTheStash
 description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance.
-version: 0.3.1
+version: 0.3.2
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -10,6 +10,7 @@ hooks:
   - name: PerformerCompare
     description: Removes scene from missing Stash if a match is found in local Stash.
     triggeredBy:
+      - Scene.Create.Post
       - Scene.Update.Post
 tasks:
   - name: Process performers

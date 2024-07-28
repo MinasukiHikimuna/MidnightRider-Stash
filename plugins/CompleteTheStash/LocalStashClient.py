@@ -15,6 +15,9 @@ class LocalStashClient:
     def find_performers(self, performer_filter, filter):
         return self.local_stash.find_performers(performer_filter, filter)
 
+    def find_scene_by_id(self, scene_id):
+        return self.local_stash.find_scene(scene_id)
+
     def find_performer(self, performer_id: int) -> dict:
         create = False
         fragment = """

@@ -1,0 +1,100 @@
+api_key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc
+blobs_path: blobs
+blobs_storage: FILESYSTEM
+cache: cache
+calculate_md5: false
+create_image_clip_from_videos: false
+dangerous_allow_public_without_auth: "false"
+database: stash-go.sqlite
+gallery_cover_regex: (poster|cover|folder|board)\.[^\.]+$
+generated: generated
+host: 0.0.0.0
+jwt_secret_key: 82fce16350c106961a9f4e591feb5046c08ae4021250c4e00762363e90505cf5
+no_proxy: localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12
+nobrowser: false
+notifications_enabled: true
+parallel_tasks: 1
+password: $2a$04$emq7OgjGUigXt95qrw.8t.jjB5hWrjvSbTe7Qm1a9tHozkoMTY.d6
+plugins:
+  package_sources:
+    - localpath: community
+      name: Community (stable)
+      url: https://stashapp.github.io/CommunityScripts/stable/index.yml
+    - localpath: null
+      name: MidnightRider-Stash
+      url: https://minasukihikimuna.github.io/MidnightRider-Stash/index.yml
+  settings:
+    CompleteTheStash:
+      missingStashAddress: http://localhost:6662
+      missingStashApiKey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38
+      performerTags: Completionist
+plugins_path: plugins
+port: 6661
+preview_audio: true
+preview_exclude_end: "0"
+preview_exclude_start: "0"
+preview_segment_duration: 0.75
+preview_segments: 12
+scrapers:
+  package_sources:
+    - localpath: community
+      name: Community (stable)
+      url: https://stashapp.github.io/CommunityScrapers/stable/index.yml
+scrapers_path: scrapers
+security_tripwire_accessed_from_public_internet: ""
+sequential_scanning: false
+session_store_key: c3e93be5c3eae136d74d55f9860972c119f2b4821adb14a064e2563162ec5353
+show_one_time_moved_notification: false
+sound_on_preview: false
+stash: []
+stash_boxes:
+  - apikey: REPLACE_ME
+    endpoint: https://stashdb.org/graphql
+    name: StashDB
+theme_color: "#00ff00"
+ui:
+  frontPageContent:
+    - __typename: CustomFilter
+      direction: DESC
+      message:
+        id: recently_released_objects
+        values:
+          objects: Scenes
+      mode: SCENES
+      sortBy: date
+    - __typename: CustomFilter
+      direction: DESC
+      message:
+        id: recently_added_objects
+        values:
+          objects: Studios
+      mode: STUDIOS
+      sortBy: created_at
+    - __typename: CustomFilter
+      direction: DESC
+      message:
+        id: recently_released_objects
+        values:
+          objects: Movies
+      mode: MOVIES
+      sortBy: date
+    - __typename: CustomFilter
+      direction: DESC
+      message:
+        id: recently_added_objects
+        values:
+          objects: Performers
+      mode: PERFORMERS
+      sortBy: created_at
+    - __typename: CustomFilter
+      direction: DESC
+      message:
+        id: recently_released_objects
+        values:
+          objects: Galleries
+      mode: GALLERIES
+      sortBy: date
+  lastNoteSeen: "20240510"
+username: test
+video_file_naming_algorithm: OSHASH
+write_image_thumbnails: true
