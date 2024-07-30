@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "CompleteTheStash (process_performers_json_input)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "plugins/CompleteTheStash/CompleteTheStash.py",
             "console": "integratedTerminal",
             "env": {
                 "FAKE_INPUT": "process_performers_json_input"
