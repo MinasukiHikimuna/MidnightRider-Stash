@@ -2,7 +2,7 @@ from datetime import datetime
 
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
-from StashDbClient import StashDbClient
+from StashboxClient import StashboxClient
 
 
 class StashCompleter:
@@ -10,17 +10,17 @@ class StashCompleter:
         self,
         config,
         logger,
-        stashdb_client: StashDbClient,
+        stashbox_client: StashboxClient,
         local_stash_client: LocalStashClient,
         missing_stash_client: MissingStashClient,
     ):
-        self.stashdb_client = stashdb_client
+        self.stashbox_client = stashbox_client
         self.local_stash_client = local_stash_client
         self.missing_stash_client = missing_stash_client
         self.config = config
         self.logger = logger
 
-    def compare_scenes(self, local_scenes, existing_missing_scenes, stashdb_scenes):
+    def compare_scenes(self, local_scenes, existing_missing_scenes, stashbox_scenes):
         local_scene_ids = {
             stash_id["stash_id"]
             for scene in local_scenes
@@ -38,7 +38,7 @@ class StashCompleter:
 
         new_missing_scenes = [
             scene
-            for scene in stashdb_scenes
+            for scene in stashbox_scenes
             if scene["id"] not in local_scene_ids
             and scene["id"] not in existing_missing_scene_ids
         ]
@@ -65,7 +65,7 @@ class StashCompleter:
             )
         except ValueError:
             self.logger.error(
-                f"Invalid date format for scene '{title}': {date} (StashDB ID: {stash_id})"
+                f"Invalid date format for scene '{title}': {date} (Stashbox ID: {stash_id})"
             )
             return None
 
@@ -136,7 +136,7 @@ class StashCompleter:
         if parent_studio_id:
             studio_create_input["parent_id"] = parent_studio_id
 
-        studio_image = self.stashdb_client.query_studio_image(stash_id)
+        studio_image = self.stashbox_client.query_studio_image(stash_id)
         if studio_image:
             studio_create_input["image"] = studio_image
 
@@ -168,7 +168,7 @@ class StashCompleter:
             )
             return performer_id
 
-        image_url = self.stashdb_client.query_performer_image(performer_stash_id)
+        image_url = self.stashbox_client.query_performer_image(performer_stash_id)
 
         performer_in = {
             "name": performer_name,
@@ -267,10 +267,25 @@ class StashCompleter:
         local_scenes = local_performer_details["scenes"]
         existing_missing_scenes = missing_performer_details["scenes"]
 
-        stashdb_scenes = self.stashdb_client.query_scenes(performer_stash_id)
+        stashbox_scenes = self.stashbox_client.query_scenes(performer_stash_id)
+        filtered_stashbox_scenes = []
+        exclude_tags = self.config.get("sceneExcludeTags")
+        if exclude_tags is None or not exclude_tags:
+            filtered_stashbox_scenes = stashbox_scenes
+        else:
+            for scene in stashbox_scenes:
+                if scene["tags"] is None or not scene["tags"]:
+                    filtered_stashbox_scenes.append(scene)
+                else:
+                    self.logger.debug(f"Scene ID: {scene['id']}")
+                    self.logger.debug(f"Scene title: {scene['title']}")
+                    self.logger.debug(f"Scene tags: {scene['tags']}")
+                    self.logger.debug(f"Exclude tags: {exclude_tags}")
+                    if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
+                        filtered_stashbox_scenes.append(scene)
 
-        # Create a set of stashdb scene IDs for quick lookup
-        stashdb_scene_ids = {scene["id"] for scene in stashdb_scenes}
+        # Create a set of stashbox scene IDs for quick lookup
+        stashbox_scene_ids = {scene["id"] for scene in filtered_stashbox_scenes}
 
         destroyed_scenes_stash_ids = []
         for local_scene in local_scenes:
@@ -310,7 +325,7 @@ class StashCompleter:
                 ),
                 None,
             )
-            if existing_missing_scene_stash_id not in stashdb_scene_ids:
+            if existing_missing_scene_stash_id not in stashbox_scene_ids:
                 self.missing_stash_client.destroy_scene(existing_missing_scene["id"])
                 destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
                 self.logger.info(
@@ -318,7 +333,7 @@ class StashCompleter:
                 )
 
         missing_scenes = self.compare_scenes(
-            local_scenes, existing_missing_scenes, stashdb_scenes
+            local_scenes, existing_missing_scenes, filtered_stashbox_scenes
         )
 
         total_scenes = len(missing_scenes)

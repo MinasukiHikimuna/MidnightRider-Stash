@@ -1,6 +1,6 @@
 name: CompleteTheStash
-description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance.
-version: 0.3.2
+description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance. You can use either StashDB or TPDB or both as a source for missing scenes.
+version: 0.4.0
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -13,18 +13,26 @@ hooks:
       - Scene.Create.Post
       - Scene.Update.Post
 tasks:
-  - name: Process performers
+  - name: Complete The Stash!
     description: Create missing scenes of performers to another Stash instance
     defaultArgs:
       mode: process_performers
 settings:
   missingStashAddress:
-    displayName: Missing Stash address
-    description: URL of the Stash instance where missing scenes are created.
+    displayName: StashDB - Missing Stash URL
+    description: URL of the Stash app instance where missing scenes from StashDB are created.
     type: STRING
   missingStashApiKey:
-    displayName: Missing Stash API key
-    description: API key of the Stash instance where missing scenes are created.
+    displayName: StashDB - Missing Stash API key
+    description: API key of the Stash app instance where missing scenes from StashDB are created.
+    type: STRING
+  missingStashTpdbAddress:
+    displayName: TPDB - Missing Stash URL
+    description: URL of the Stash app instance where missing scenes from TPDB are created.
+    type: STRING
+  missingStashTpdbApiKey:
+    displayName: TPDB - Missing Stash API key
+    description: API key of the Stash app instance where missing scenes from TPDB are created.
     type: STRING
   performerTags:
     displayName: Include performers with tags

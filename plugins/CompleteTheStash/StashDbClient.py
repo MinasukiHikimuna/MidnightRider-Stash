@@ -1,29 +1,13 @@
 import requests
 import stashapi.log as logger
 
+from StashboxClient import StashboxClient
 
-class StashDbClient:
-    def __init__(self, endpoint, api_key, exclude_tags):
+
+class StashDbClient(StashboxClient):
+    def __init__(self, endpoint, api_key):
         self.endpoint = endpoint
         self.api_key = api_key
-        self.exclude_tags = exclude_tags
-
-    def gql_query(self, query, variables=None):
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Apikey"] = self.api_key
-        response = requests.post(
-            self.endpoint,
-            json={"query": query, "variables": variables},
-            headers=headers,
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.error(
-                f"Query failed with status code {response.status_code}: {response.text}"
-            )
-            return None
 
     def query_performer_image(self, performer_stash_id):
         query = """
@@ -37,7 +21,7 @@ class StashDbClient:
                 }
             }
         """
-        result = self.gql_query(query, {"id": performer_stash_id})
+        result = self._gql_query(query, {"id": performer_stash_id})
         if result:
             performer_data = result["data"]["findPerformer"]
             if (
@@ -67,7 +51,7 @@ class StashDbClient:
                 }
             }
         """
-        result = self.gql_query(query, {"id": performer_stash_id})
+        result = self._gql_query(query, {"id": performer_stash_id})
         if result:
             performer_data = result["data"]["findStudio"]
             if (
@@ -85,7 +69,7 @@ class StashDbClient:
         logger.error(f"Failed to query studio with Stash ID {performer_stash_id}.")
         return None
 
-    def query_scenes(self, performer_stash_ids):
+    def query_scenes(self, performer_stash_id):
         query = """
             query QueryScenes($stash_ids: [ID!]!, $page: Int!) {
                 queryScenes(
@@ -143,8 +127,8 @@ class StashDbClient:
         page = 1
         total_scenes = None
         while True:
-            result = self.gql_query(
-                query, {"stash_ids": performer_stash_ids, "page": page}
+            result = self._gql_query(
+                query, {"stash_ids": performer_stash_id, "page": page}
             )
             if result:
                 scenes_data = result["data"]["queryScenes"]
@@ -156,11 +140,21 @@ class StashDbClient:
             else:
                 break
 
-        filtered_scenes = []
-        for scene in scenes:
-            if scene["tags"]:
-                exclude_tags = self.exclude_tags
-                if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
-                    filtered_scenes.append(scene)
+        return scenes
 
-        return filtered_scenes
+    def _gql_query(self, query, variables=None):
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Apikey"] = self.api_key
+        response = requests.post(
+            self.endpoint,
+            json={"query": query, "variables": variables},
+            headers=headers,
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(
+                f"Query failed with status code {response.status_code}: {response.text}"
+            )
+            return None

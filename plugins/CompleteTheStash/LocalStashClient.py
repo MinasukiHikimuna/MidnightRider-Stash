@@ -53,9 +53,3 @@ class LocalStashClient:
         }
         """
         return self.local_stash.find_performer(performer_id, create, fragment)
-
-    def create_scene(self, scene_data):
-        return self.local_stash.create_scene(scene_data)
-
-    def destroy_scene(self, scene_id):
-        return self.local_stash.destroy_scene(scene_id)

@@ -76,5 +76,6 @@ LOCAL_STASH_API_KEY=
 
 # For E2E tests, following are required.
 STASH_BIN=            # Path to Stash binary
-STASH_API_KEY=        # API key to StashDB, needed for E2E tests
+STASHDB_API_KEY=      # API key to StashDB, needed for E2E tests
+TPDB_API_KEY=         # API key to TPDB, needed for E2E tests
 ```

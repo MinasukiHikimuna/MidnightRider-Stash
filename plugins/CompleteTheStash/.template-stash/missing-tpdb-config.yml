@@ -9,29 +9,20 @@ database: stash-go.sqlite
 gallery_cover_regex: (poster|cover|folder|board)\.[^\.]+$
 generated: generated
 host: 0.0.0.0
-jwt_secret_key: 82fce16350c106961a9f4e591feb5046c08ae4021250c4e00762363e90505cf5
+jwt_secret_key: 47998ca5181b9241b036f832195a2bfa79322fb64e9bcaf84bea0a70f045c97d
 no_proxy: localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12
 nobrowser: false
 notifications_enabled: true
 parallel_tasks: 1
-password: $2a$04$emq7OgjGUigXt95qrw.8t.jjB5hWrjvSbTe7Qm1a9tHozkoMTY.d6
+password: $2a$04$z2LNS6K2M/0Pa5F1dVIgwOoPLX4K9D.wly7vcm8/9naDEHRoIe3g2
 plugins:
   package_sources:
     - localpath: community
       name: Community (stable)
       url: https://stashapp.github.io/CommunityScripts/stable/index.yml
-    - localpath: null
-      name: MidnightRider-Stash
-      url: https://minasukihikimuna.github.io/MidnightRider-Stash/index.yml
-  settings:
-    CompleteTheStash:
-      # missingStashAddress: http://localhost:6662
-      # missingStashApiKey: REPLACE_ME
-      # missingStashTpdbAddress: http://localhost:6663
-      # missingStashTpdbApiKey: REPLACE_ME
-      performerTags: Completionist
+  settings: {}
 plugins_path: plugins
-port: 6661
+port: 6663
 preview_audio: true
 preview_exclude_end: "0"
 preview_exclude_start: "0"
@@ -45,18 +36,15 @@ scrapers:
 scrapers_path: scrapers
 security_tripwire_accessed_from_public_internet: ""
 sequential_scanning: false
-session_store_key: c3e93be5c3eae136d74d55f9860972c119f2b4821adb14a064e2563162ec5353
+session_store_key: afcfee5437c3b94ea24c7ee3c02670d7bec86de3b08f8f80e1fcfaeca625cfb2
 show_one_time_moved_notification: false
 sound_on_preview: false
 stash: []
 stash_boxes:
   - apikey: REPLACE_ME
-    endpoint: https://stashdb.org/graphql
-    name: StashDB
-  - apikey: REPLACE_ME
     endpoint: https://theporndb.net/graphql
     name: TPDB
-theme_color: "#00ff00"
+theme_color: "#ff0000"
 ui:
   frontPageContent:
     - __typename: CustomFilter

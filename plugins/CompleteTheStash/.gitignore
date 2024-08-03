@@ -1,3 +1,4 @@
 .env
 .local-stash
-.missing-stash
+.missing-stashdb-stash
+.missing-tpdb-stash
