@@ -110,7 +110,7 @@ def local_stash_instance_stashdb():
     local_working_dir = os.path.join(test_dir, ".local-stash")
     plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
     executable_path = os.getenv("STASH_BIN")
-    local_config_path = os.path.join(template_dir, "local-config.yml")
+    local_config_path = os.path.join(template_dir, "local-config.txt")
 
     if os.path.exists(local_working_dir):
         shutil.rmtree(local_working_dir)
@@ -126,7 +126,7 @@ def local_stash_instance_stashdb():
             stash_box["apikey"] = os.getenv("STASHDB_API_KEY")
             stashdb_found = True
             break
-    assert stashdb_found, "StashDB endpoint not found in local-config.yml"
+    assert stashdb_found, "StashDB endpoint not found in local-config.txt"
 
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "performerTags"
@@ -170,7 +170,7 @@ def local_stash_instance_tpdb():
     local_working_dir = os.path.join(test_dir, ".local-stash")
     plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
     executable_path = os.getenv("STASH_BIN")
-    local_config_path = os.path.join(template_dir, "local-config.yml")
+    local_config_path = os.path.join(template_dir, "local-config.txt")
 
     if os.path.exists(local_working_dir):
         shutil.rmtree(local_working_dir)
@@ -186,7 +186,7 @@ def local_stash_instance_tpdb():
             stash_box["apikey"] = os.getenv("TPDB_API_KEY")
             tpdb_found = True
             break
-    assert tpdb_found, "TPDB endpoint not found in local-config.yml"
+    assert tpdb_found, "TPDB endpoint not found in local-config.txt"
 
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "performerTags"
@@ -229,7 +229,7 @@ def missing_stash_instance_stashdb():
     template_dir = os.path.join(test_dir, ".template-stash")
     missing_working_dir = os.path.join(test_dir, ".missing-stashdb-stash")
     executable_path = os.getenv("STASH_BIN")
-    missing_config_path = os.path.join(template_dir, "missing-stashdb-config.yml")
+    missing_config_path = os.path.join(template_dir, "missing-stashdb-config.txt")
 
     if os.path.exists(missing_working_dir):
         shutil.rmtree(missing_working_dir)
@@ -263,7 +263,7 @@ def missing_stash_instance_tpdb():
     template_dir = os.path.join(test_dir, ".template-stash")
     missing_working_dir = os.path.join(test_dir, ".missing-tpdb-stash")
     executable_path = os.getenv("STASH_BIN")
-    missing_config_path = os.path.join(template_dir, "missing-tpdb-config.yml")
+    missing_config_path = os.path.join(template_dir, "missing-tpdb-config.txt")
 
     if os.path.exists(missing_working_dir):
         shutil.rmtree(missing_working_dir)
