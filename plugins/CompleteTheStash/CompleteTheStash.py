@@ -170,7 +170,7 @@ def process_input(json_input, stash_completer: StashCompleter):
     event_type = json_input.get("args", {}).get("hookContext", {}).get("type")
     if json_input.get("args", {}).get("mode") == "process_performers":
         stash_completer.process_performers()
-    elif event_type == "Scene.Create.Post":
+    elif event_type in ["Scene.Create.Post", "Scene.Update.Post"]:
         try:
             scene_id = json_input.get("args", {}).get("hookContext", {}).get("id")
         except AttributeError:
@@ -184,29 +184,6 @@ def process_input(json_input, stash_completer: StashCompleter):
 
         logger.debug(f"Processing scene create type {event_type} for scene {scene_id}.")
         stash_completer.process_scene_by_id(scene_id)
-    elif event_type == "Scene.Update.Post":
-        try:
-            stash_ids = (
-                json_input.get("args", {})
-                .get("hookContext", {})
-                .get("input", {})
-                .get("stash_ids", [])
-            )
-        except AttributeError:
-            stash_ids = []
-
-        stash_id = next(
-            (sid.get("stash_id") for sid in stash_ids),
-            None,
-        )
-        if (stash_id is None) or (stash_id == ""):
-            logger.debug(
-                f"Stash ID is not provided in the input for type {event_type}. Skipping."
-            )
-            return
-
-        logger.debug(f"Processing scene update type {event_type} for scene {stash_id}.")
-        stash_completer.process_scene_by_stashbox_id(stash_id)
     else:
         logger.error(f"Invalid input: {json_input}")
 
