@@ -42,3 +42,5 @@ Install [Visual Studio Code](https://code.visualstudio.com/) and following exten
 After opening this repository in Visual Studio Code, remember to set correct kernel for Jupyter notebook: https://code.visualstudio.com/docs/datascience/jupyter-kernel-management
 
 Now you can start experimenting with Stash and Pandas by looking at hello_world.ipynb.
+
+![Example notebook with Data Wrangler](images/hello_world_data_wrangler.png)
