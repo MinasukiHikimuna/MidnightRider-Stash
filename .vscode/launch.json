@@ -9,10 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "plugins/CompleteTheStash/CompleteTheStash.py",
-            "console": "integratedTerminal",
-            "env": {
-                "FAKE_INPUT": "process_performers_json_input"
-            }
+            "console": "integratedTerminal"
         }
     ]
 }

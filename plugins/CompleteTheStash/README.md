@@ -4,6 +4,12 @@ This plugin is designed to compare local performer scenes with those available o
 
 This plugin will not add, modify or delete anything in your main Stash instance. This plugin will read which performers you have tagged to be included in the comparison, get a list of all scenes of those performers from StashDB and create these missing scenes in the separate, missing Stash instance. Now you can easily see from that separate instance which scenes you are missing and you can filter those by site or by tags.
 
+Complete The Stash requires `stashapp-tools` to be installed:
+
+```
+pip install -U stashapp-tools
+```
+
 ## History
 
 This plugin was originally developed by Serechops but due to major overhaul it was split as a separate plugin.
@@ -46,7 +52,11 @@ The separate task for longer running processing is critical for good user experi
 
 ## Requirements for development
 
-`pip install stashapp-tools`
+Running the plugin from VS Code during development reads sensitive values from .env file. This requires `python-dotenv`.
+
+```
+pip install -U python-dotenv
+```
 
 For development Python's pytest is used. You need to install it:
 

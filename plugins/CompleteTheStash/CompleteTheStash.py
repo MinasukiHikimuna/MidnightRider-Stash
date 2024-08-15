@@ -3,7 +3,6 @@ import json
 import os
 import sys
 from urllib.parse import urlparse
-import dotenv
 
 import stashapi.log as logger
 from LocalStashClient import LocalStashClient
@@ -11,8 +10,6 @@ from MissingStashClient import MissingStashClient
 from StashCompleter import StashCompleter
 from StashDbClient import StashDbClient
 from TpdbClient import TpdbClient
-
-dotenv.load_dotenv()
 
 
 @dataclass
@@ -193,6 +190,9 @@ def execute():
     logger.debug(f"Input: {json_input}")
 
     if os.getenv("FAKE_INPUT"):
+        import dotenv
+
+        dotenv.load_dotenv()
         local_stash_client = LocalStashClient.create_with_api_key(
             os.getenv("LOCAL_STASH_SCHEME"),
             os.getenv("LOCAL_STASH_HOST"),
