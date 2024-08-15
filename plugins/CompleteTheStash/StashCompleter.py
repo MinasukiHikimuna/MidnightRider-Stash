@@ -215,6 +215,7 @@ class StashCompleter:
 
     def process_performers(self):
         selected_local_performers = self.find_selected_local_performers()
+        selected_local_performers_with_stash_ids = []
         missing_performers_by_stash_id = {}
 
         for local_performer in selected_local_performers:
@@ -227,13 +228,21 @@ class StashCompleter:
                 ),
                 None,
             )
+            self.logger.debug(f"Performer {local_performer_name}: Stash ID {performer_stash_id}")
+            if not performer_stash_id:
+                self.logger.warning(
+                    f"Performer {local_performer_name} does not have a Stashbox ID for endpoint {self.config.get('stashboxEndpoint')}. Skipping..."
+                )
+                continue
+
+            selected_local_performers_with_stash_ids.append(local_performer)
             missing_performer_id = self.get_or_create_missing_performer(
                 local_performer_name, performer_stash_id
             )
 
             missing_performers_by_stash_id[performer_stash_id] = missing_performer_id
 
-        for local_performer in selected_local_performers:
+        for local_performer in selected_local_performers_with_stash_ids:
             self.process_performer(
                 local_performer["id"], missing_performers_by_stash_id
             )

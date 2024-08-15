@@ -310,6 +310,11 @@ def test_stashdb(
         .with_stash_id("a68a7630-4282-4d60-9734-6f695dea6ab8", graphql_endpoint)
         .build()
     )
+    performer_alexis = (PerformerBuilder()
+        .with_name("Alexis Crystal")
+        .with_stash_id("f1f1e7a-5380-4c4f-92b1-c340f48f8c94", "https://anotherendpoint.com/graphql")
+        .build()
+    )
 
     scene_quality_work = (
         SceneBuilder()
@@ -341,6 +346,9 @@ def test_stashdb(
     )
     performer_alissa_local = local_stash_instance_stashdb.create_performer(
         {**performer_alissa, "tag_ids": [tag["id"]]}
+    )
+    performer_alexis_local = local_stash_instance_stashdb.create_performer(
+        {**performer_alexis, "tag_ids": [tag["id"]]}
     )
 
     job_id = local_stash_instance_stashdb.run_plugin_task(
@@ -465,6 +473,11 @@ def test_tpdb(
         .with_stash_id("19dcb2e9-1bfb-40b1-9567-ed8670bb4efc", graphql_endpoint)
         .build()
     )
+    performer_alexis = (PerformerBuilder()
+        .with_name("Alexis Crystal")
+        .with_stash_id("f1f1e7a-5380-4c4f-92b1-c340f48f8c94", "https://anotherendpoint.com/graphql")
+        .build()
+    )
 
     scene_quality_work = (
         SceneBuilder()
@@ -496,6 +509,9 @@ def test_tpdb(
     )
     performer_alissa_local = local_stash_instance_tpdb.create_performer(
         {**performer_alissa, "tag_ids": [tag["id"]]}
+    )
+    performer_alexis_local = local_stash_instance_tpdb.create_performer(
+        {**performer_alexis, "tag_ids": [tag["id"]]}
     )
 
     job_id = local_stash_instance_tpdb.run_plugin_task(
