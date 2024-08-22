@@ -58,37 +58,32 @@ class StashCompleter:
             missing_tag = self.missing_stash_client.get_or_create_tag(tag["name"])
             tag_ids.append(missing_tag["id"])
 
+        new_scene = {
+            "title": title,
+            "code": code,
+            "details": scene["details"],
+            "url": studio_url,
+            "studio_id": studio_id,
+            "performer_ids": performer_ids,
+            "tag_ids": tag_ids,
+            "cover_image": cover_image,
+            "stash_ids": [
+                {
+                    "endpoint": self.config.get("stashboxEndpoint"),
+                    "stash_id": stash_id,
+                }
+            ],
+        }
+
         try:
-            # Ensure the date is in the correct format
             formatted_date = (
                 datetime.strptime(date, "%Y-%m-%d").date().isoformat() if date else None
             )
+            new_scene["date"] = formatted_date
         except ValueError:
-            self.logger.error(
-                f"Invalid date format for scene '{title}': {date} (Stashbox ID: {stash_id})"
-            )
-            return None
+            pass
 
-        result = self.missing_stash_client.create_scene(
-            {
-                "title": title,
-                "code": code,
-                "details": scene["details"],
-                "url": studio_url,
-                "date": formatted_date,
-                "studio_id": studio_id,
-                "performer_ids": performer_ids,
-                "tag_ids": tag_ids,
-                "cover_image": cover_image,
-                "stash_ids": [
-                    {
-                        "endpoint": self.config.get("stashboxEndpoint"),
-                        "stash_id": stash_id,
-                    }
-                ],
-            }
-        )
-
+        result = self.missing_stash_client.create_scene(new_scene)
         if result:
             return result["id"]
 
@@ -228,7 +223,9 @@ class StashCompleter:
                 ),
                 None,
             )
-            self.logger.debug(f"Performer {local_performer_name}: Stash ID {performer_stash_id}")
+            self.logger.debug(
+                f"Performer {local_performer_name}: Stash ID {performer_stash_id}"
+            )
             if not performer_stash_id:
                 self.logger.warning(
                     f"Performer {local_performer_name} does not have a Stashbox ID for endpoint {self.config.get('stashboxEndpoint')}. Skipping..."
