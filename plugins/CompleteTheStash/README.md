@@ -23,6 +23,36 @@ You can find the original plugin here: https://github.com/Serechops/Serechops-St
 - Missing scenes can be excluded by tags e.g. for avoiding compilations.
 - Missing scenes are automatically deleted from the missing Stash instance when you add those to your main Stash.
 
+## Setting up a second (or a third) Stash instance
+
+These instructions are for Windows users which the majority of the users probably are.
+
+Quick start:
+
+1. Open a PowerShell
+2. `mkdir C:\Stash_Missing_StashDB`
+3. `cd C:\Stash_Missing_StashDB`
+4. `& stash-win.exe --config C:\Stash_Missing_StashDB\config.yml --port 9998`
+5. Open http://localhost:9998
+6. Complete first time set up
+7. Set up credentials by setting username and password. This is required for setting up API key.
+8. Create an API key which will be used in the Configuration section.
+
+### Troubleshooting
+
+```
+&: The term 'stash-win.exe' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+```
+
+Your stash-win.exe is somewhere that PowerShell cannot find it from. Please find it for example with Windows Explorer and copy the full path to it by right-clicking on stash-win.exe and clicking Copy Path. After that adjust the command to: `& C:\some\full\path\stash-win.exe --config C:\Stash_Missing_StashDB\config.yml --port 9998`
+
+```
+ERRO[2024-08-23 05:16:19] http server error: listen tcp 0.0.0.0:9999: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+```
+
+In this case your selected port was already being used. Choose another one such as 9997 and try again.
+
 ## Configuration
 
 All configuration is done in Plugins settings in your primary Stash.
