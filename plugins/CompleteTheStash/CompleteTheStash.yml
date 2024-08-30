@@ -1,6 +1,6 @@
 name: CompleteTheStash
 description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance. You can use either StashDB or TPDB or both as a source for missing scenes.
-version: 0.4.6
+version: 0.4.7
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -42,3 +42,8 @@ settings:
     displayName: Exclude scenes with tags
     description: Tags of the scenes to exclude from processing, e.g. Compilation. Separate multiple tags with commas.
     type: STRING
+  enableSceneHooks:
+    displayName: Enable scene hooks
+    description: Enable the scene hooks. This will remove missing scenes from the missing Stash instances automatically when scenes are created or updated in the local Stash instance. Note that this will dramatically decrease performance as every scene update will trigger a hook which takes a couple of seconds.
+    type: BOOLEAN
+  

@@ -25,6 +25,7 @@ class CompleteTheStashConfiguration:
     sceneExcludeTags: str
     stashDbSceneSource: MissingSceneSource
     tpdbSceneSource: MissingSceneSource
+    enableSceneHooks: bool
 
 
 def parse_url(url):
@@ -147,6 +148,7 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         sceneExcludeTags=scene_exclude_tags,
         stashDbSceneSource=stash_db_configuration,
         tpdbSceneSource=tpdb_configuration,
+        enableSceneHooks=complete_the_stash_config.get("enableSceneHooks", False),
     )
 
 
@@ -166,6 +168,7 @@ def process_input(json_input, stash_completer: StashCompleter):
     logger.debug(f"Processing input: {json_input}")
     event_type = json_input.get("args", {}).get("hookContext", {}).get("type")
     if json_input.get("args", {}).get("mode") == "process_performers":
+        logger.info(f"Processing performers for endpoint {stash_completer.stashbox_client.endpoint}.")
         stash_completer.process_performers()
     elif event_type in ["Scene.Create.Post", "Scene.Update.Post"]:
         try:
@@ -179,7 +182,7 @@ def process_input(json_input, stash_completer: StashCompleter):
             )
             return
 
-        logger.debug(f"Processing scene create type {event_type} for scene {scene_id}.")
+        logger.debug(f"Processing scene create type {event_type} for scene {scene_id} for endpoint {stash_completer.stashbox_client.endpoint}.")
         stash_completer.process_scene_by_id(scene_id)
     else:
         logger.error(f"Invalid input: {json_input}")
@@ -208,10 +211,13 @@ def execute():
 
     complete_the_stash_config = get_complete_the_stash_config(local_configuration)
 
+    # Stop processing as soon as possible to improve performance if scene hooks are disabled.
+    event_type = json_input.get("args", {}).get("hookContext", {}).get("type")
+    if event_type in ["Scene.Create.Post", "Scene.Update.Post"] and not complete_the_stash_config.enableSceneHooks:
+        return
+
     # StashDB
     if complete_the_stash_config.stashDbSceneSource:
-        logger.info("Processing StashDB scenes.")
-
         missing_stash_client = create_missing_stash_client(
             complete_the_stash_config.stashDbSceneSource
         )
@@ -231,6 +237,7 @@ def execute():
             "performerTags": complete_the_stash_config.performerTags,
             "stashboxEndpoint": complete_the_stash_config.stashDbSceneSource.stashboxEndpoint,
             "sceneExcludeTags": complete_the_stash_config.sceneExcludeTags,
+            "enableSceneHooks": complete_the_stash_config.enableSceneHooks,
         }
         stash_completer = StashCompleter(
             config,
@@ -243,8 +250,6 @@ def execute():
 
     # TPDB
     if complete_the_stash_config.tpdbSceneSource:
-        logger.info("Processing TPDB scenes.")
-
         missing_stash_client = create_missing_stash_client(
             complete_the_stash_config.tpdbSceneSource
         )
@@ -264,6 +269,7 @@ def execute():
             "performerTags": complete_the_stash_config.performerTags,
             "stashboxEndpoint": complete_the_stash_config.tpdbSceneSource.stashboxEndpoint,
             "sceneExcludeTags": complete_the_stash_config.sceneExcludeTags,
+            "enableSceneHooks": complete_the_stash_config.enableSceneHooks,
         }
         stash_completer = StashCompleter(
             config,
