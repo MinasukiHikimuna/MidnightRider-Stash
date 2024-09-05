@@ -33,23 +33,14 @@ buildPlugin()
 
     # create a directory for the version
     version=$(git log -n 1 --pretty=format:%h -- "$dir"/*)
-    updated=$(TZ=UTC0 git log -n 1 --date="format-local:%F %T" -- "$dir"/*)
+    updated=$(TZ=UTC0 git log -n 1 --date="format-local:%F %T" --pretty=format:%ad -- "$dir"/*)
     
     # create the zip file
     # copy other files
     zipfile=$(realpath "$outdir/$plugin_id.zip")
     
     pushd "$dir" > /dev/null
-    
-    # Check for .manifestignore file
-    if [ -f ".manifestignore" ]; then
-        # Use .manifestignore to exclude files
-        zip -r "$zipfile" . -x@.manifestignore > /dev/null
-    else
-        # If .manifestignore doesn't exist, include all files
-        zip -r "$zipfile" . > /dev/null
-    fi
-    
+    zip -r "$zipfile" . > /dev/null
     popd > /dev/null
 
     name=$(grep "^name:" "$f" | head -n 1 | cut -d' ' -f2- | sed -e 's/\r//' -e 's/^"\(.*\)"$/\1/')
