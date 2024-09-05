@@ -1,0 +1,6 @@
+.template-stash\local-config.txt
+.template-stash\missing-stashdb-config.txt
+.template-stash\missing-tpdb-config.txt
+.gitignore
+fakeInput.py
+test_stash_e2e.py
