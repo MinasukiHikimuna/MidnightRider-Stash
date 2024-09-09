@@ -1,17 +1,23 @@
 name: CompleteTheStash
 description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance. You can use either StashDB or TPDB or both as a source for missing scenes.
-version: 0.4.9
+version: 0.5.0
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
   - "{pluginDir}/CompleteTheStash.py" # Adjust to your script's name and location
 interface: raw
-hooks:
-  - name: PerformerCompare
-    description: Removes scene from missing Stash if a match is found in local Stash.
-    triggeredBy:
-      - Scene.Create.Post
-      - Scene.Update.Post
+# Uncomment the following hooks if you want missing scenes to be updated
+# whenever you update scenes in the main Stash. This will cause each scene
+# update to a couple of seconds which is a couple of orders of magnitudes
+# longer than without these. The slowness is caused because each scene update
+# will start the plugin separately and it will then connect to multiple stashes.
+#
+# hooks:
+#   - name: PerformerCompare
+#     description: Removes scene from missing Stash if a match is found in local Stash.
+#     triggeredBy:
+#       - Scene.Create.Post
+#       - Scene.Update.Post
 tasks:
   - name: Complete The Stash!
     description: Create missing scenes of performers to another Stash instance
