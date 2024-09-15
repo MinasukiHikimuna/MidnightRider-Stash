@@ -73,12 +73,11 @@ Optional configuration values:
 
 ## Usage
 
-The script is designed to be executed as a plugin within Stash. It is triggered by:
+The script is designed to be executed as a plugin within Stash. The plugin has a task "Complete The Stash!" which reads through your tagged performers and creates scenes in your missing Stash instances. This will create, update and delete scenes in the missing Stash instances.
 
-- Executing "Process performers" task manually. This will create, update and possibly delete missing scenes.
-- Local scene being updated. If a previously missing scene is now found in local Stash, it is deleted from missing Stash.
+Optionally, you can enable hooks which will automatically remove missing scenes when they are added to your main Stash. However, due to the current plugin architecture, this will significantly slow down your Stash as each update of any scene will trigger a hook. Every run will take a few seconds. This can be especially problematic when doing batch changes for potentially thousands of scenes.
 
-The separate task for longer running processing is critical for good user experience. For example if performer processing was triggered when a performer is tagged with Completionist, local Stash UI would look like being stuck until all, possibly thousands of scenes for that performer would have been processed.
+Hooks can be enabled in CompleteTheStash.yml by uncommenting the related lines.
 
 ## Requirements for development
 
