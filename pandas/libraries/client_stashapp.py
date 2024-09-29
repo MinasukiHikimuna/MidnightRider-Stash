@@ -7,14 +7,13 @@ import os
 # Load the .env file
 load_dotenv()
 
-# Get the API key
-scheme = os.getenv("STASHAPP_SCHEME")
-host = os.getenv("STASHAPP_HOST")
-port = os.getenv("STASHAPP_PORT")
-api_key = os.getenv("STASHAPP_API_KEY")
+def get_stashapp_client(prefix=""):
+    # Use the provided prefix to get environment variables
+    scheme = os.getenv(f"{prefix}STASHAPP_SCHEME")
+    host = os.getenv(f"{prefix}STASHAPP_HOST")
+    port = os.getenv(f"{prefix}STASHAPP_PORT")
+    api_key = os.getenv(f"{prefix}STASHAPP_API_KEY")
 
-
-def get_stashapp_client():
     stash = StashInterface(
         {
             "scheme": scheme,
