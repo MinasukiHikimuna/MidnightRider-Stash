@@ -424,13 +424,9 @@ def test_stashdb(
         }
     )
     
-    # Test: Scene is updated with stash_id
-    local_quality_work = local_stash_instance_stashdb.create_scene(
-        {"title": scene_quality_work.get("title")}
-    )
-    local_stash_instance_stashdb.update_scene(
+    # Test: Scene is created with stash_id without the performers to make sure the scenes are still destroyed.
+    local_stash_instance_stashdb.create_scene(
         {
-            "id": local_quality_work["id"],
             "title": scene_quality_work.get("title"),
             "stash_ids": [
                 {
@@ -438,7 +434,6 @@ def test_stashdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
-            "performer_ids": [performer_kelly_local["id"]],
         }
     )
 
@@ -598,14 +593,10 @@ def test_tpdb(
             "performer_ids": [performer_kelly_local["id"]],
         }
     )
-
-    # Test: Scene is updated with stash_id
-    local_quality_work = local_stash_instance_tpdb.create_scene(
-        {"title": scene_quality_work.get("title")}
-    )
-    local_stash_instance_tpdb.update_scene(
+    
+    # Test: Scene is created with stash_id without the performers to make sure the scenes are still destroyed.
+    local_stash_instance_tpdb.create_scene(
         {
-            "id": local_quality_work["id"],
             "title": scene_quality_work.get("title"),
             "stash_ids": [
                 {
@@ -613,7 +604,6 @@ def test_tpdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
-            "performer_ids": [performer_kelly_local["id"]],
         }
     )
 

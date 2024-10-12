@@ -65,7 +65,7 @@ class LocalStashClient:
                         image_data = base64.b64encode(response.content).decode('utf-8')
                         data_url = f"data:image/{image_type};base64,{image_data}"
                         performer['image'] = data_url
-                        self.logger.info(f"Downloaded image for performer {performer['name']}")
+                        self.logger.debug(f"Downloaded image for performer {performer['name']}")
                     except requests.RequestException as e:
                         self.logger.error(f"Failed to download image for performer {performer['name']}: {str(e)}")
         return performers
@@ -92,3 +92,6 @@ class LocalStashClient:
         }
         """
         return self.local_stash.find_performer(performer_id, create, fragment)
+
+    def find_all_scenes(self):
+        return self.local_stash.find_scenes(fragment="id title stash_ids { stash_id endpoint }")

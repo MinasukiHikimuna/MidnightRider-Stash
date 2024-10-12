@@ -82,3 +82,6 @@ class MissingStashClient:
                 }
             }
         )
+
+    def find_all_scenes(self):
+        return self.missing_stash.find_scenes(fragment="id title stash_ids { stash_id endpoint }")
