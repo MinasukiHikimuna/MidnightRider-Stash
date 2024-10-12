@@ -9,7 +9,10 @@
             "type": "debugpy",
             "request": "launch",
             "program": "plugins/CompleteTheStash/CompleteTheStash.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "env": {
+                "ENABLE_DEV_MODE": "true"
+            }
         }
     ]
 }

@@ -47,10 +47,14 @@ def check_stash_instances_are_unique(local_configuration, missing_configuration)
 
 
 def get_json_input():
-    if os.getenv("FAKE_INPUT"):
-        from fakeInput import fake_input
+    if os.getenv("ENABLE_DEV_MODE"):
+        import dotenv
+        dotenv.load_dotenv()
 
-        return fake_input[os.getenv("FAKE_INPUT")]
+        fake_input = os.getenv("FAKE_INPUT")
+        if not fake_input:
+            raise ValueError("FAKE_INPUT environment variable is not set.")
+        return json.loads(fake_input)
     else:
         raw_input = sys.stdin.read()
         return json.loads(raw_input)
@@ -192,20 +196,7 @@ def execute():
     json_input = get_json_input()
     logger.debug(f"Input: {json_input}")
 
-    if os.getenv("FAKE_INPUT"):
-        import dotenv
-
-        dotenv.load_dotenv()
-        local_stash_client = LocalStashClient.create_with_api_key(
-            os.getenv("LOCAL_STASH_SCHEME"),
-            os.getenv("LOCAL_STASH_HOST"),
-            os.getenv("LOCAL_STASH_PORT"),
-            os.getenv("LOCAL_STASH_API_KEY"),
-            logger,
-        )
-    else:
-        local_stash_client = LocalStashClient(json_input["server_connection"], logger)
-
+    local_stash_client = LocalStashClient(json_input["server_connection"], logger)
     local_configuration = local_stash_client.get_configuration()
     logger.debug(f"Local configuration: {local_configuration}")
 
