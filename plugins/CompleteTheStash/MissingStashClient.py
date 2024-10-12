@@ -57,6 +57,9 @@ class MissingStashClient:
 
     def create_performer(self, performer_data):
         return self.missing_stash.create_performer(performer_data)
+    
+    def update_performer(self, performer_data):
+        return self.missing_stash.update_performer(performer_data)
 
     def find_scenes_by_stash_id(self, stash_id: str):
         return self.missing_stash.find_scenes(

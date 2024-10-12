@@ -73,10 +73,14 @@ def create_manifest_file(target_dir, files_copied):
 
 class PerformerBuilder:
     def __init__(self):
-        self.performer = {"name": "", "stash_ids": []}
+        self.performer = {"name": "", "stash_ids": [], "gender": ""}
 
     def with_name(self, name):
         self.performer["name"] = name
+        return self
+
+    def with_gender(self, gender):
+        self.performer["gender"] = gender
         return self
 
     def with_stash_id(self, stash_id, endpoint):
@@ -301,17 +305,20 @@ def test_stashdb(
     performer_kelly = (
         PerformerBuilder()
         .with_name("Kelly Collins")
+        .with_gender("FEMALE")
         .with_stash_id("bfbf1de8-0208-4282-a3cd-7abe2d0588c0", graphql_endpoint)
         .build()
     )
     performer_alissa = (
         PerformerBuilder()
         .with_name("Alissa Foxy")
+        .with_gender("FEMALE")
         .with_stash_id("a68a7630-4282-4d60-9734-6f695dea6ab8", graphql_endpoint)
         .build()
     )
     performer_alexis = (PerformerBuilder()
         .with_name("Alexis Crystal")
+        .with_gender("FEMALE")
         .with_stash_id("f1f1e7a-5380-4c4f-92b1-c340f48f8c94", "https://anotherendpoint.com/graphql")
         .build()
     )
@@ -361,6 +368,7 @@ def test_stashdb(
     )
     assert performer_kelly_missing is not None
     assert performer_kelly_missing.get("name") == "Kelly Collins"
+    assert performer_kelly_missing.get("gender") == "FEMALE"
     assert performer_kelly_missing.get("stash_ids") == [
         {
             "endpoint": graphql_endpoint,
@@ -412,19 +420,10 @@ def test_stashdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
+            "performer_ids": [performer_kelly_local["id"]],
         }
     )
-    missing_gimme_all = missing_stash_instance_stashdb.find_scenes(
-        {
-            "stash_id_endpoint": {
-                "endpoint": graphql_endpoint,
-                "stash_id": scene_gimme_all.get("stash_ids")[0].get("stash_id"),
-                "modifier": "EQUALS",
-            }
-        }
-    )
-    assert len(missing_gimme_all) == 0
-
+    
     # Test: Scene is updated with stash_id
     local_quality_work = local_stash_instance_stashdb.create_scene(
         {"title": scene_quality_work.get("title")}
@@ -439,8 +438,25 @@ def test_stashdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
+            "performer_ids": [performer_kelly_local["id"]],
         }
     )
+
+    job_id = local_stash_instance_stashdb.run_plugin_task(
+        "CompleteTheStash", "Complete The Stash!"
+    )
+    local_stash_instance_stashdb.wait_for_job(job_id, timeout=600)
+    
+    missing_gimme_all = missing_stash_instance_stashdb.find_scenes(
+        {
+            "stash_id_endpoint": {
+                "endpoint": graphql_endpoint,
+                "stash_id": scene_gimme_all.get("stash_ids")[0].get("stash_id"),
+                "modifier": "EQUALS",
+            }
+        }
+    )
+    assert len(missing_gimme_all) == 0
 
     missing_quality_work = missing_stash_instance_stashdb.find_scenes(
         {
@@ -464,17 +480,20 @@ def test_tpdb(
     performer_kelly = (
         PerformerBuilder()
         .with_name("Kelly Collins")
+        .with_gender("FEMALE")
         .with_stash_id("e1321ecc-1214-4389-bd2e-5b5db1ee8407", graphql_endpoint)
         .build()
     )
     performer_alissa = (
         PerformerBuilder()
         .with_name("Alissa Foxy")
+        .with_gender("FEMALE")
         .with_stash_id("19dcb2e9-1bfb-40b1-9567-ed8670bb4efc", graphql_endpoint)
         .build()
     )
     performer_alexis = (PerformerBuilder()
         .with_name("Alexis Crystal")
+        .with_gender("FEMALE")
         .with_stash_id("f1f1e7a-5380-4c4f-92b1-c340f48f8c94", "https://anotherendpoint.com/graphql")
         .build()
     )
@@ -524,6 +543,7 @@ def test_tpdb(
     )
     assert performer_kelly_missing is not None
     assert performer_kelly_missing.get("name") == "Kelly Collins"
+    assert performer_kelly_missing.get("gender") == "FEMALE"
     assert performer_kelly_missing.get("stash_ids") == [
         {
             "endpoint": graphql_endpoint,
@@ -575,18 +595,9 @@ def test_tpdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
+            "performer_ids": [performer_kelly_local["id"]],
         }
     )
-    missing_gimme_all = missing_stash_instance_tpdb.find_scenes(
-        {
-            "stash_id_endpoint": {
-                "endpoint": graphql_endpoint,
-                "stash_id": scene_gimme_all.get("stash_ids")[0].get("stash_id"),
-                "modifier": "EQUALS",
-            }
-        }
-    )
-    assert len(missing_gimme_all) == 0
 
     # Test: Scene is updated with stash_id
     local_quality_work = local_stash_instance_tpdb.create_scene(
@@ -602,9 +613,26 @@ def test_tpdb(
                     "endpoint": graphql_endpoint,
                 }
             ],
+            "performer_ids": [performer_kelly_local["id"]],
         }
     )
 
+    job_id = local_stash_instance_tpdb.run_plugin_task(
+        "CompleteTheStash", "Complete The Stash!"
+    )
+    local_stash_instance_tpdb.wait_for_job(job_id, timeout=600)
+
+    missing_gimme_all = missing_stash_instance_tpdb.find_scenes(
+        {
+            "stash_id_endpoint": {
+                "endpoint": graphql_endpoint,
+                "stash_id": scene_gimme_all.get("stash_ids")[0].get("stash_id"),
+                "modifier": "EQUALS",
+            }
+        }
+    )
+    assert len(missing_gimme_all) == 0
+    
     missing_quality_work = missing_stash_instance_tpdb.find_scenes(
         {
             "stash_id_endpoint": {
