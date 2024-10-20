@@ -110,6 +110,19 @@ class StashDbClient(StashboxClient):
                             performer {
                                 id
                                 name
+                                gender
+                                aliases
+                                birth_date
+                                breast_type
+                                cup_size
+                                ethnicity
+                                country
+                                hair_color
+                                eye_color
+                                images {
+                                    id
+                                    url
+                                }
                             }
                         }
                         duration
