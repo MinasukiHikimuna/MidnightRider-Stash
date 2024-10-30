@@ -1,6 +1,6 @@
 name: HashTheStash
 description: Calculates additional fingerprints for scenes.
-version: 0.4.0
+version: 0.4.1
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
