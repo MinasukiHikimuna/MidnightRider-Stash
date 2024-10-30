@@ -4,8 +4,10 @@ import sys
 import hashlib
 import stashapi.log as logger
 from stashapi.stashapp import StashInterface
+
 try:
     import xxhash
+    has_xxhash = True
 except ImportError:
     logger.error("xxhash is not installed. Please install it using 'pip install xxhash'.")
     has_xxhash = False
