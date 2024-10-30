@@ -1,6 +1,6 @@
 name: HashTheStash
 description: Calculates additional fingerprints for scenes.
-version: 0.3.0
+version: 0.4.0
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -8,7 +8,7 @@ exec:
 interface: raw
 tasks:
   - name: Hash The Stash!
-    description: Calculates additional fingerprints for scenes.
+    description: Calculates additional fingerprints for scenes and galleries.
     defaultArgs:
       mode: calculate_hashes
 settings:
@@ -24,3 +24,12 @@ settings:
     displayName: SHA-1 hashing
     description: Enable SHA-1 hashing.
     type: BOOLEAN
+  hash_galleries:
+    displayName: Hash galleries
+    description: Enable hashing of galleries.
+    type: BOOLEAN
+  hash_scenes:
+    displayName: Hash scenes
+    description: Enable hashing of scenes.
+    type: BOOLEAN
+

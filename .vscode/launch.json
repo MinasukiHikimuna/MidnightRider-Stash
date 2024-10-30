@@ -13,6 +13,16 @@
             "env": {
                 "ENABLE_DEV_MODE": "true"
             }
-        }
+        },
+        {
+            "name": "HashTheStash (process_performers_json_input)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "plugins/HashTheStash/HashTheStash.py",
+            "console": "integratedTerminal",
+            "env": {
+                "ENABLE_DEV_MODE": "true"
+            }
+        },
     ]
 }
