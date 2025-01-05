@@ -165,6 +165,8 @@ class StashCompleter:
             )
             
             performer_in['id'] = performer_id
+            if performer_in['custom_fields']:
+                performer_in['custom_fields'] = { "full": performer_in['custom_fields'] }
             self.missing_stash_client.update_performer(performer_in)            
             return performer_id
 
@@ -193,11 +195,6 @@ class StashCompleter:
         for key_to_delete in keys_to_delete:
             if key_to_delete in performer_in:
                 del performer_in[key_to_delete]
-        
-        if performer_in['custom_fields'] is not None:
-            custom_fields = performer_in['custom_fields']
-            del performer_in['custom_fields']
-            performer_in['custom_fields'] = { "full": custom_fields }
         
         return performer_in
 
@@ -269,7 +266,6 @@ class StashCompleter:
             for stash_id in scene["stash_ids"]
             if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
         }
-        print(local_scene_stash_ids)
 
         scenes_to_destroy = []
         for missing_scene in scenes_in_missing_stash:
@@ -283,7 +279,6 @@ class StashCompleter:
             )
             if missing_scene_stash_id in local_scene_stash_ids:
                 scenes_to_destroy.append(missing_scene)
-        print(scenes_to_destroy)
 
         # Destroy missing scenes that exist in local stash
         for scene in scenes_to_destroy:
