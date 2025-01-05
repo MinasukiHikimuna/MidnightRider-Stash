@@ -193,6 +193,12 @@ class StashCompleter:
         for key_to_delete in keys_to_delete:
             if key_to_delete in performer_in:
                 del performer_in[key_to_delete]
+        
+        if performer_in['custom_fields'] is not None:
+            custom_fields = performer_in['custom_fields']
+            del performer_in['custom_fields']
+            performer_in['custom_fields'] = { "full": custom_fields }
+        
         return performer_in
 
     def find_selected_local_performers(self):
