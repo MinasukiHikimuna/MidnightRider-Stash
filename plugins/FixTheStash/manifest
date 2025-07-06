@@ -2,7 +2,7 @@ id: FixTheStash
 name: Fix The Stash
 metadata:
   description: Provides easy data fixes.
-version: 0.1.0
+version: 0.1.1
 date: "2025-07-06 00:00:00"
 requires: []
 source_repository: https://minasukihikimuna.github.io/MidnightRider-Stash/index.yml

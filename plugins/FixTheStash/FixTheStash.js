@@ -220,14 +220,30 @@
     }
 
     // Use csLib to call GraphQL
-    const variables = {
-      input: {
-        ids: selectedScenes.map((o) => o.id),
-        tag_ids: { mode: "ADD", ids: fix.addTags.map((o) => o.id) || [] },
-      },
-    };
-    const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
-    await csLib.callGQL({ query, variables });
+    if (fix.addTags && fix.addTags.length > 0) {
+      const variables = {
+        input: {
+          ids: selectedScenes.map((o) => o.id),
+          tag_ids: { mode: "ADD", ids: fix.addTags.map((o) => o.id) || [] },
+        },
+      };
+      const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
+      await csLib.callGQL({ query, variables });
+    }
+
+    if (fix.removeTags && fix.removeTags.length > 0) {
+      const variables = {
+        input: {
+          ids: selectedScenes.map((o) => o.id),
+          tag_ids: {
+            mode: "REMOVE",
+            ids: fix.removeTags.map((o) => o.id) || [],
+          },
+        },
+      };
+      const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
+      await csLib.callGQL({ query, variables });
+    }
 
     setTimeout(() => {
       const client = window.PluginApi.utils.StashService.getClient();
