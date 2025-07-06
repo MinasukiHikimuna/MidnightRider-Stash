@@ -209,6 +209,18 @@
     }
   }
 
+  // Function to refresh the scenes query
+  function refreshScenes() {
+    setTimeout(() => {
+      const client = window.PluginApi.utils.StashService.getClient();
+      const cache = client.cache;
+
+      window.PluginApi.utils.StashService.evictQueries(cache, [
+        window.PluginApi.GQL.FindScenesDocument,
+      ]);
+    }, 0);
+  }
+
   // Function to apply a fix to selected scenes
   async function applyFix(fix) {
     // Find all selected scenes
@@ -245,14 +257,7 @@
       await csLib.callGQL({ query, variables });
     }
 
-    setTimeout(() => {
-      const client = window.PluginApi.utils.StashService.getClient();
-      const cache = client.cache;
-
-      window.PluginApi.utils.StashService.evictQueries(cache, [
-        window.PluginApi.GQL.FindScenesDocument,
-      ]);
-    }, 0);
+    refreshScenes();
   }
 
   // Function to highlight fix buttons
@@ -359,13 +364,23 @@
       gap: 10px;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
+    `;
+
+    // Create left side container for label and fix buttons
+    const leftContainer = document.createElement("div");
+    leftContainer.style.cssText = `
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
     `;
 
     // Add a label
     const label = document.createElement("span");
     label.textContent = "Fixes:";
     label.style.cssText = "color: #fff; font-weight: bold; margin-right: 10px;";
-    fixButtonsContainer.appendChild(label);
+    leftContainer.appendChild(label);
 
     // Create buttons for each fix
     sceneFixes.forEach((fix, index) => {
@@ -381,8 +396,24 @@
         await applyFix(fix, fixNumber);
       });
 
-      fixButtonsContainer.appendChild(button);
+      leftContainer.appendChild(button);
     });
+
+    // Create refresh button
+    const refreshButton = document.createElement("button");
+    refreshButton.className = "btn btn-sm btn-outline-secondary";
+    refreshButton.textContent = "🔄 Refresh";
+    refreshButton.style.cssText = "margin-left: auto;";
+    refreshButton.title = "Refresh scenes query";
+
+    // Add click handler for refresh
+    refreshButton.addEventListener("click", () => {
+      refreshScenes();
+    });
+
+    // Add containers to main container
+    fixButtonsContainer.appendChild(leftContainer);
+    fixButtonsContainer.appendChild(refreshButton);
 
     // Insert after the last toolbar (scene-list-header)
     const headerToolbar = document.querySelector(".scene-list-header");
