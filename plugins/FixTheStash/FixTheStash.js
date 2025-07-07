@@ -257,6 +257,7 @@
       await csLib.callGQL({ query, variables });
     }
 
+    document.querySelector('button[title="Select None"]').click();
     refreshScenes();
   }
 
