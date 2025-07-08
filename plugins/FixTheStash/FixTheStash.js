@@ -12,19 +12,19 @@
   } = window.stash7dJx1qP;
 
   document.body.appendChild(document.createElement("style")).textContent = `
-    .search-item > div.row:first-child > div.col-md-6.my-1 > div:first-child { display: flex; flex-direction: column; }
-    .tagger-remove { order: 10; }
-    .fix-button-highlight {
-      animation: pulse 1s infinite;
-      border-color: #ffc107 !important;
-      background-color: rgba(255, 193, 7, 0.1) !important;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-    }
-    `;
+      .search-item > div.row:first-child > div.col-md-6.my-1 > div:first-child { display: flex; flex-direction: column; }
+      .tagger-remove { order: 10; }
+      .fix-button-highlight {
+        animation: pulse 1s infinite;
+        border-color: #ffc107 !important;
+        background-color: rgba(255, 193, 7, 0.1) !important;
+      }
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+      }
+      `;
 
   // Parse fixes from window.stashFixesData
   function parseFixesFromWindow() {
@@ -232,17 +232,6 @@
     }
 
     // Use csLib to call GraphQL
-    if (fix.addTags && fix.addTags.length > 0) {
-      const variables = {
-        input: {
-          ids: selectedScenes.map((o) => o.id),
-          tag_ids: { mode: "ADD", ids: fix.addTags.map((o) => o.id) || [] },
-        },
-      };
-      const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
-      await csLib.callGQL({ query, variables });
-    }
-
     if (fix.removeTags && fix.removeTags.length > 0) {
       const variables = {
         input: {
@@ -251,6 +240,17 @@
             mode: "REMOVE",
             ids: fix.removeTags.map((o) => o.id) || [],
           },
+        },
+      };
+      const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
+      await csLib.callGQL({ query, variables });
+    }
+
+    if (fix.addTags && fix.addTags.length > 0) {
+      const variables = {
+        input: {
+          ids: selectedScenes.map((o) => o.id),
+          tag_ids: { mode: "ADD", ids: fix.addTags.map((o) => o.id) || [] },
         },
       };
       const query = `mutation BulkSceneUpdate($input: BulkSceneUpdateInput!) {bulkSceneUpdate(input: $input) { id title }}`;
@@ -378,24 +378,24 @@
     const fixButtonsContainer = document.createElement("div");
     fixButtonsContainer.className = "fix-buttons-container";
     fixButtonsContainer.style.cssText = `
-      background: #1a1a1a;
-      border-top: 1px solid #444;
-      padding: 10px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-    `;
+        background: #1a1a1a;
+        border-top: 1px solid #444;
+        padding: 10px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+      `;
 
     // Create left side container for label and fix buttons
     const leftContainer = document.createElement("div");
     leftContainer.style.cssText = `
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    `;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      `;
 
     // Add a label
     const label = document.createElement("span");
