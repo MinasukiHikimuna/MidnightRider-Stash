@@ -297,7 +297,7 @@
     if (event.key.toLowerCase() === "q" && !qPressed) {
       qPressed = true;
       event.preventDefault();
-      console.log("Q pressed, waiting for number key...");
+      console.log("Q pressed, waiting for number key or letter key...");
 
       // Highlight fix buttons
       highlightFixButtons();
@@ -324,6 +324,26 @@
         console.log(`Fix ${fixNumber} does not exist`);
       }
 
+      qPressed = false;
+    } else if (qPressed && event.key.toLowerCase() === "w") {
+      // Q + W: Show preview videos
+      event.preventDefault();
+      clearTimeout(qTimeout);
+      removeFixButtonHighlight();
+      console.log("Q + W: Showing preview videos");
+      document
+        .querySelectorAll(".scene-card-preview-video")
+        .forEach((el) => (el.style.top = "0px"));
+      qPressed = false;
+    } else if (qPressed && event.key.toLowerCase() === "g") {
+      // Q + G: Hide preview videos
+      event.preventDefault();
+      clearTimeout(qTimeout);
+      removeFixButtonHighlight();
+      console.log("Q + G: Hiding preview videos");
+      document
+        .querySelectorAll(".scene-card-preview-video")
+        .forEach((el) => (el.style.top = "-9999px"));
       qPressed = false;
     } else if (qPressed && event.key === "Escape") {
       // Cancel keyboard shortcut mode with Escape
