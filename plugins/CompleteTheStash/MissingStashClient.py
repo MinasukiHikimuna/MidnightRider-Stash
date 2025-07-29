@@ -25,7 +25,7 @@ class MissingStashClient:
         return self.missing_stash.create_scene(scene_data)
 
     def destroy_scene(self, scene_id: int) -> None:
-        scene = self.missing_stash.find_scene(scene_id)
+        scene = self.missing_stash.find_scene(scene_id, fragment="id")
         if scene:
             return self.missing_stash.destroy_scene(scene_id)
 
@@ -57,7 +57,7 @@ class MissingStashClient:
 
     def create_performer(self, performer_data):
         return self.missing_stash.create_performer(performer_data)
-    
+
     def update_performer(self, performer_data):
         return self.missing_stash.update_performer(performer_data)
 
@@ -84,4 +84,6 @@ class MissingStashClient:
         )
 
     def find_all_scenes(self):
-        return self.missing_stash.find_scenes(fragment="id title stash_ids { stash_id endpoint }")
+        return self.missing_stash.find_scenes(
+            fragment="id title stash_ids { stash_id endpoint }"
+        )
