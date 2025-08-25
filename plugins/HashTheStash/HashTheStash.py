@@ -121,7 +121,7 @@ if __name__ == "__main__":
     json_input = get_json_input()
     logger.debug(f"Input: {json_input}")
 
-    stash = StashInterface(json_input["server_connection"])
+    stash = StashInterface(json_input["server_connection"], verify_ssl=False)
     configuration = stash.get_configuration()
     plugin_configuration = configuration["plugins"]["HashTheStash"]
 
