@@ -4,6 +4,7 @@
 
   var PLUGIN_ID = "PreviewTheStash";
   var BUTTON_ID = "pts-tag-btn";
+  var PREVIEW_DURATION = 5.4;
 
   // State
   var state = {
@@ -17,6 +18,11 @@
 
   // Crop parameters (in video-relative coordinates 0..1)
   var crop = { x: 0.25, y: 0.25, size: 0.5 };
+
+  // Loop playback state
+  var loopStart = 0;
+  var loopEnd = 0;
+  var loopHandler = null;
 
   // DOM refs
   var overlayContainer = null;
@@ -318,6 +324,28 @@
     document.removeEventListener("mouseup", onMouseUp);
   }
 
+  // ------- Preview loop playback -------
+
+  function startLoop() {
+    if (!videoEl) return;
+    loopStart = videoEl.currentTime;
+    loopEnd = loopStart + PREVIEW_DURATION;
+    loopHandler = function () {
+      if (videoEl.currentTime >= loopEnd || videoEl.currentTime < loopStart) {
+        videoEl.currentTime = loopStart;
+      }
+    };
+    videoEl.addEventListener("timeupdate", loopHandler);
+    videoEl.play();
+  }
+
+  function stopLoop() {
+    if (!videoEl || !loopHandler) return;
+    videoEl.removeEventListener("timeupdate", loopHandler);
+    loopHandler = null;
+    videoEl.pause();
+  }
+
   // ------- State machine -------
 
   function activateCropMode(btn) {
@@ -328,6 +356,7 @@
     state.active = true;
     state.picking = false;
     btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#0f0;">CROP</span>';
+    startLoop();
     renderCrop();
   }
 
@@ -340,6 +369,7 @@
   }
 
   function deactivate(btn) {
+    stopLoop();
     state.active = false;
     state.picking = false;
     document.body.classList.remove("pts-pick-mode");
@@ -360,7 +390,7 @@
     var btn = document.getElementById(BUTTON_ID);
     var params = cropToAnchorZoom();
     var sceneId = window.location.pathname.replace("/scenes/", "").split("/")[0];
-    var startSeconds = videoEl ? videoEl.currentTime : 0;
+    var startSeconds = loopStart;
 
     deactivate(btn);
     runBackendTask(sceneId, startSeconds, params.anchor_x, params.anchor_y, params.zoom, tagName, btn);
