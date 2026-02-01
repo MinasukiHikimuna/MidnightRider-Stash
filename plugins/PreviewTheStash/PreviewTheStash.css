@@ -26,7 +26,7 @@
 /* The draggable crop square */
 .pts-crop {
   position: absolute;
-  border: 2px solid #0f0;
+  border: none;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   cursor: move;
   box-sizing: border-box;
@@ -48,11 +48,11 @@
 .pts-handle-ne { top: 0; right: 0; cursor: nesw-resize; }
 .pts-handle-se { bottom: 0; right: 0; cursor: nwse-resize; }
 .pts-handle-sw { bottom: 0; left: 0; cursor: nesw-resize; }
-/* Edge handles */
-.pts-handle-n, .pts-handle-s { width: 24px; height: 6px; left: 50%; margin-left: -12px; }
+/* Edge handles — dashed lines spanning full edge between corners */
+.pts-handle-n, .pts-handle-s { height: 2px; left: 12px; right: 12px; background: repeating-linear-gradient(90deg, #0f0 0, #0f0 6px, transparent 6px, transparent 12px); }
 .pts-handle-n { top: 0; cursor: ns-resize; }
 .pts-handle-s { bottom: 0; cursor: ns-resize; }
-.pts-handle-e, .pts-handle-w { height: 24px; width: 6px; top: 50%; margin-top: -12px; }
+.pts-handle-e, .pts-handle-w { width: 2px; top: 12px; bottom: 12px; background: repeating-linear-gradient(180deg, #0f0 0, #0f0 6px, transparent 6px, transparent 12px); }
 .pts-handle-e { right: 0; cursor: ew-resize; }
 .pts-handle-w { left: 0; cursor: ew-resize; }
 
