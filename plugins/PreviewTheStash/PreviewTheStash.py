@@ -53,7 +53,7 @@ def probe_video_dimension(input_path, dimension="height"):
             "-of", "json",
             str(input_path),
         ],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", check=True,
     )
     data = json.loads(result.stdout)
     return int(data["streams"][0][dimension])
@@ -79,7 +79,7 @@ def encode_square_webm(input_path, output_path, start, duration, bitrate,
         str(output_path),
     ]
     log.info(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
     if result.returncode != 0:
         log.error(f"ffmpeg failed: {result.stderr}")
         sys.exit(1)
@@ -128,7 +128,7 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
             "-an", "-y",
             str(temp_path),
         ]
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
         upload_path = temp_path
         cleanup = True
     else:
