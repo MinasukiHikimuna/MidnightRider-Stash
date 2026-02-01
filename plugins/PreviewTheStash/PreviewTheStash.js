@@ -284,14 +284,16 @@
 
       var newSize = state.cropStart.size + dd;
       crop.size = newSize;
-      // Anchor the opposite edge: if handle is on top/left, shift position
+      clampCrop();
+      // Anchor the opposite edge: compute position from the clamped size
+      var ds = crop.size - state.cropStart.size;
       if (dir === "nw" || dir === "n" || dir === "ne") {
-        crop.y = state.cropStart.y - (newSize - state.cropStart.size);
+        crop.y = state.cropStart.y - ds;
       } else {
         crop.y = state.cropStart.y;
       }
       if (dir === "nw" || dir === "w" || dir === "sw") {
-        crop.x = state.cropStart.x - (newSize - state.cropStart.size) * (vr.h / vr.w);
+        crop.x = state.cropStart.x - ds * (vr.h / vr.w);
       } else {
         crop.x = state.cropStart.x;
       }
