@@ -110,6 +110,10 @@
   function renderCrop() {
     if (!cropEl || !videoEl) return;
     var vr = getVideoRect();
+    // Clip overlay to actual video rect (exclude letterbox/pillarbox)
+    overlayContainer.style.clipPath =
+      "inset(" + vr.y + "px " + (videoEl.clientWidth - vr.x - vr.w) + "px " +
+      (videoEl.clientHeight - vr.y - vr.h) + "px " + vr.x + "px)";
     // crop coords are fraction of video area
     var left = vr.x + crop.x * vr.w;
     var top = vr.y + crop.y * vr.h;
@@ -164,9 +168,13 @@
     cropEl = document.createElement("div");
     cropEl.className = "pts-crop";
 
-    var handle = document.createElement("div");
-    handle.className = "pts-crop-handle";
-    cropEl.appendChild(handle);
+    var handles = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+    handles.forEach(function (dir) {
+      var h = document.createElement("div");
+      h.className = "pts-crop-handle pts-handle-" + dir;
+      h.dataset.dir = dir;
+      cropEl.appendChild(h);
+    });
 
     hudEl = document.createElement("div");
     hudEl.className = "pts-hud";
@@ -193,23 +201,22 @@
 
     // --- Drag handling ---
     cropEl.addEventListener("mousedown", function (e) {
-      if (e.target === handle) return; // let resize handle its own event
+      if (e.target.classList.contains("pts-crop-handle")) return;
       e.preventDefault();
       e.stopPropagation();
       state.dragging = true;
-      var vr = getVideoRect();
       state.dragStart = { mx: e.clientX, my: e.clientY };
       state.cropStart = { x: crop.x, y: crop.y };
     });
 
     // --- Resize handling ---
-    handle.addEventListener("mousedown", function (e) {
+    cropEl.addEventListener("mousedown", function (e) {
+      if (!e.target.classList.contains("pts-crop-handle")) return;
       e.preventDefault();
       e.stopPropagation();
-      state.resizing = true;
-      var vr = getVideoRect();
+      state.resizing = e.target.dataset.dir;
       state.dragStart = { mx: e.clientX, my: e.clientY };
-      state.cropStart = { size: crop.size };
+      state.cropStart = { x: crop.x, y: crop.y, size: crop.size };
     });
 
     document.addEventListener("mousemove", onMouseMove);
@@ -224,22 +231,36 @@
     }
     var vr = getVideoRect();
     if (vr.h < 1 || vr.w < 1) return;
-    // Default: center square covering 50% of video height
-    crop.size = 0.5;
+    // Default: full-height 1:1 crop, centered horizontally (anchor-x = 0.5)
+    crop.size = 1.0;
     var sizePx = crop.size * vr.h;
     crop.x = (vr.w - sizePx) / 2 / vr.w;
-    crop.y = (vr.h - sizePx) / 2 / vr.h;
+    crop.y = 0;
     clampCrop();
     renderCrop();
+  }
+
+  function clampMouseToVideoRect(clientX, clientY) {
+    var vr = getVideoRect();
+    var rect = videoEl.getBoundingClientRect();
+    var minX = rect.left + vr.x;
+    var maxX = minX + vr.w;
+    var minY = rect.top + vr.y;
+    var maxY = minY + vr.h;
+    return {
+      x: Math.max(minX, Math.min(maxX, clientX)),
+      y: Math.max(minY, Math.min(maxY, clientY)),
+    };
   }
 
   function onMouseMove(e) {
     if (!state.dragging && !state.resizing) return;
     var vr = getVideoRect();
+    var clamped = clampMouseToVideoRect(e.clientX, e.clientY);
 
     if (state.dragging) {
-      var dx = (e.clientX - state.dragStart.mx) / vr.w;
-      var dy = (e.clientY - state.dragStart.my) / vr.h;
+      var dx = (clamped.x - state.dragStart.mx) / vr.w;
+      var dy = (clamped.y - state.dragStart.my) / vr.h;
       crop.x = state.cropStart.x + dx;
       crop.y = state.cropStart.y + dy;
       clampCrop();
@@ -247,12 +268,33 @@
     }
 
     if (state.resizing) {
-      // Resize by dragging bottom-right corner
-      var dd = Math.max(
-        e.clientX - state.dragStart.mx,
-        e.clientY - state.dragStart.my
-      );
-      crop.size = state.cropStart.size + dd / vr.h;
+      var dir = state.resizing;
+      var dx = (clamped.x - state.dragStart.mx) / vr.h;
+      var dy = (clamped.y - state.dragStart.my) / vr.h;
+      var dd = 0;
+      // For square crop: pick the dominant axis delta based on handle direction
+      if (dir === "se") dd = Math.max(dx, dy);
+      else if (dir === "nw") dd = Math.min(-dx, -dy);
+      else if (dir === "ne") dd = Math.max(dx, -dy);
+      else if (dir === "sw") dd = Math.max(-dx, dy);
+      else if (dir === "e") dd = dx;
+      else if (dir === "w") dd = -dx;
+      else if (dir === "s") dd = dy;
+      else if (dir === "n") dd = -dy;
+
+      var newSize = state.cropStart.size + dd;
+      crop.size = newSize;
+      // Anchor the opposite edge: if handle is on top/left, shift position
+      if (dir === "nw" || dir === "n" || dir === "ne") {
+        crop.y = state.cropStart.y - (newSize - state.cropStart.size);
+      } else {
+        crop.y = state.cropStart.y;
+      }
+      if (dir === "nw" || dir === "w" || dir === "sw") {
+        crop.x = state.cropStart.x - (newSize - state.cropStart.size) * (vr.h / vr.w);
+      } else {
+        crop.x = state.cropStart.x;
+      }
       clampCrop();
       renderCrop();
     }
