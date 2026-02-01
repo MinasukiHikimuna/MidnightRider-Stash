@@ -223,7 +223,6 @@
       return;
     }
     var vr = getVideoRect();
-    console.log("PreviewTheStash: videoRect", vr, "videoWidth", videoEl.videoWidth, "videoHeight", videoEl.videoHeight, "clientW", videoEl.clientWidth, "clientH", videoEl.clientHeight);
     if (vr.h < 1 || vr.w < 1) return;
     // Default: center square covering 50% of video height
     crop.size = 0.5;
