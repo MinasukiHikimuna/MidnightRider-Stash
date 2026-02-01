@@ -1,0 +1,35 @@
+name: PreviewTheStash
+description: Set animated tag preview images by cropping scene video clips with a visual overlay tool.
+version: 0.1.0
+url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
+ui:
+  javascript:
+    - PreviewTheStash.js
+  css:
+    - PreviewTheStash.css
+exec:
+  - python
+  - "{pluginDir}/PreviewTheStash.py"
+interface: raw
+tasks:
+  - name: Set Tag Preview
+    description: Extract a square clip from a scene video and set it as a tag preview image
+    defaultArgs:
+      mode: set_tag_preview
+settings:
+  tagOutputDir:
+    displayName: Tag Output Directory
+    description: Directory to save WebM clips and JSON metadata files.
+    type: STRING
+  defaultDuration:
+    displayName: Default Duration
+    description: Default clip duration in seconds.
+    type: STRING
+  defaultBitrate:
+    displayName: Default Bitrate
+    description: Default encoding bitrate (e.g. 2140k).
+    type: STRING
+  uploadMaxWidth:
+    displayName: Upload Max Width
+    description: Maximum width in pixels for uploaded previews. Larger files are downscaled.
+    type: STRING
