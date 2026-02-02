@@ -391,6 +391,28 @@
       timeGroup.appendChild(b);
     });
 
+    // Loop toggle button
+    var loopToggleBtn = document.createElement("button");
+    loopToggleBtn.className = "pts-toolbar-btn";
+    loopToggleBtn.id = "pts-loop-toggle";
+    loopToggleBtn.textContent = "⟲ Loop";
+    loopToggleBtn.style.color = "#0f0"; // Start active
+    loopToggleBtn.addEventListener("click", function () {
+      if (loopHandler) {
+        // Currently looping - stop it
+        stopLoop();
+        if (videoEl) videoEl.currentTime = loopStart;
+        loopToggleBtn.style.color = "#666";
+        loopToggleBtn.style.opacity = "0.5";
+      } else {
+        // Not looping - start it
+        startLoop();
+        loopToggleBtn.style.color = "#0f0";
+        loopToggleBtn.style.opacity = "1";
+      }
+    });
+    timeGroup.appendChild(loopToggleBtn);
+
     // Status text
     toolbarStatusEl = document.createElement("div");
     toolbarStatusEl.className = "pts-toolbar-status";
@@ -474,6 +496,12 @@
     startLoop();
     renderCrop();
     showToolbar("crop");
+    // Initialize loop toggle button state
+    var loopToggleBtn = document.getElementById("pts-loop-toggle");
+    if (loopToggleBtn) {
+      loopToggleBtn.style.color = "#0f0";
+      loopToggleBtn.style.opacity = "1";
+    }
   }
 
   function activatePickMode(btn) {
