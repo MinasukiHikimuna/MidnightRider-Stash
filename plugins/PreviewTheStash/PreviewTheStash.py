@@ -78,12 +78,10 @@ def encode_square_webm(input_path, output_path, start, duration, bitrate,
         "-an", "-y",
         str(output_path),
     ]
-    log.info(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
     if result.returncode != 0:
         log.error(f"ffmpeg failed: {result.stderr}")
         sys.exit(1)
-    log.info(f"Encoded WebM: {output_path}")
 
 
 def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
@@ -107,7 +105,6 @@ def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
         versions = existing.get("versions", [])
     versions.insert(0, new_version)
     metadata_path.write_text(json.dumps({"versions": versions}, indent=2))
-    log.info(f"Metadata saved to {metadata_path}")
 
 
 def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
@@ -117,7 +114,6 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
     cleanup = False
 
     if width > max_width:
-        log.info(f"Source is {width}x{width}, creating {max_width}p version for upload")
         temp_path = Path(webm_path).parent / f"{tag_name}_upload.webm"
         half_bitrate = f"{int(DEFAULT_BITRATE.rstrip('k')) // 2}k"
         cmd = [
@@ -131,8 +127,6 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
         subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
         upload_path = temp_path
         cleanup = True
-    else:
-        log.info(f"Source is {width}x{width}, uploading as-is")
 
     data = Path(upload_path).read_bytes()
     b64 = base64.b64encode(data).decode()
@@ -144,7 +138,6 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
         }""",
         {"input": {"id": tag_id, "image": data_url}},
     )
-    log.info(f"Updated tag '{tag_name}' (id={tag_id}) with preview image")
 
     if cleanup:
         Path(upload_path).unlink()
@@ -152,7 +145,7 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
 
 def resolve_scene_path(stash, scene_id):
     """Get the file path for a scene from Stash."""
-    scene = stash.find_scene(scene_id, fragment="id files { path }")
+    scene = stash.find_scene(scene_id, fragment="id title files { path }")
     if not scene:
         log.error(f"Scene {scene_id} not found")
         sys.exit(1)
@@ -160,7 +153,7 @@ def resolve_scene_path(stash, scene_id):
     if not files:
         log.error(f"Scene {scene_id} has no files")
         sys.exit(1)
-    return files[0]["path"]
+    return files[0]["path"], scene.get("title", "")
 
 
 def set_tag_preview(stash, args, config):
@@ -182,8 +175,7 @@ def set_tag_preview(stash, args, config):
         sys.exit(1)
 
     # Resolve scene file path
-    input_path = resolve_scene_path(stash, scene_id)
-    log.info(f"Scene {scene_id} -> {input_path}")
+    input_path, scene_title = resolve_scene_path(stash, scene_id)
 
     if not Path(input_path).exists():
         log.error(f"File not found: {input_path}")
@@ -216,9 +208,6 @@ def set_tag_preview(stash, args, config):
         pixel_ratio = (crop_size * crop_size) / (reference_size * reference_size)
         bitrate_value = int(bitrate.rstrip("k")) * pixel_ratio
         bitrate = f"{int(bitrate_value)}k"
-        log.info(f"Scaled bitrate to {bitrate} for {int(crop_size)}x{int(crop_size)} crop")
-
-    log.info(f"Generating preview for tag '{tag_name}' from scene {scene_id} at {start}")
 
     encode_square_webm(
         input_path, output_path, start, duration, bitrate,
@@ -231,7 +220,7 @@ def set_tag_preview(stash, args, config):
     )
 
     upload_tag_image(stash, tag_name, tag_id, output_path, config["upload_max_width"])
-    log.info(f"Done! Tag '{tag_name}' preview updated.")
+    log.info(f"Tag '{tag_name}' preview generated from scene '{scene_title}' (ID: {scene_id}) at {start}")
 
 
 if __name__ == "__main__":
