@@ -227,6 +227,16 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
         # Permanent file mode - encode full resolution
         log.info(f"Saving permanent files to {tag_output_dir}")
         output_dir = Path(tag_output_dir)
+
+        # Validate parent directory exists and is writable
+        parent_dir = output_dir.parent if output_dir.is_absolute() else output_dir.resolve().parent
+        if not parent_dir.exists():
+            log.error(f"Parent directory does not exist: {parent_dir}")
+            raise FileNotFoundError(
+                f"Cannot create output directory '{output_dir}': "
+                f"parent directory '{parent_dir}' does not exist"
+            )
+
         output_dir.mkdir(parents=True, exist_ok=True)
         safe_name = sanitize_filename(tag_name)
         output_path = output_dir / f"{safe_name}.webm"
