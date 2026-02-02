@@ -483,6 +483,12 @@
     document.body.classList.add("pts-pick-mode");
     setBtnState(btn, "PICK", "#ff0");
     showToolbar("pick");
+
+    // Switch to Details tab if not already selected
+    var detailsTab = document.querySelector('[data-rb-event-key="scene-details-panel"]');
+    if (detailsTab && detailsTab.getAttribute("aria-selected") === "false") {
+      detailsTab.click();
+    }
   }
 
   function deactivate(btn) {
