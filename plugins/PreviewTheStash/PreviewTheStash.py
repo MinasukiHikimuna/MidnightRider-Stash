@@ -252,6 +252,17 @@ def set_tag_preview(stash, args, config):
         log.error("scene_id and tag_name are required")
         sys.exit(1)
 
+    # Validate parameters
+    if zoom <= 0:
+        log.error(f"zoom must be positive, got {zoom}")
+        sys.exit(1)
+    if not 0 <= anchor_x <= 1:
+        log.error(f"anchor_x must be in range [0, 1], got {anchor_x}")
+        sys.exit(1)
+    if not 0 <= anchor_y <= 1:
+        log.error(f"anchor_y must be in range [0, 1], got {anchor_y}")
+        sys.exit(1)
+
     tag_output_dir = config["tag_output_dir"]
 
     # Resolve scene file path
