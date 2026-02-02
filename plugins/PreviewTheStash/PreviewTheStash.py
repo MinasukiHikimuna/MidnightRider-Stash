@@ -4,6 +4,7 @@ import base64
 import json
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,9 +24,9 @@ def get_config(stash):
     return {
         "tag_output_dir": plugin_config.get("tagOutputDir", ""),
         "duration": float(plugin_config.get("defaultDuration", "") or DEFAULT_DURATION),
-        "bitrate": plugin_config.get("defaultBitrate", "") or DEFAULT_BITRATE,
+        "bitrate": plugin_config.get("defaultMaxBitrate", "") or DEFAULT_BITRATE,
         "upload_max_width": int(
-            plugin_config.get("uploadMaxWidth", "") or DEFAULT_UPLOAD_MAX_WIDTH
+            plugin_config.get("defaultMaxWidth", "") or DEFAULT_UPLOAD_MAX_WIDTH
         ),
     }
 
@@ -67,6 +68,32 @@ def encode_square_webm(input_path, output_path, start, duration, bitrate,
         f"'min(iw,ih)/{zoom}:min(iw,ih)/{zoom}"
         f":(iw-min(iw,ih)/{zoom})*{anchor_x}"
         f":(ih-min(iw,ih)/{zoom})*{anchor_y}'"
+    )
+    cmd = [
+        "ffmpeg", "-ss", start,
+        "-i", str(input_path),
+        "-t", str(duration),
+        "-vf", vf,
+        "-c:v", "libvpx-vp9",
+        "-b:v", bitrate,
+        "-an", "-y",
+        str(output_path),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
+    if result.returncode != 0:
+        log.error(f"ffmpeg failed: {result.stderr}")
+        sys.exit(1)
+
+
+def encode_square_webm_downscaled(input_path, output_path, start, duration, bitrate,
+                                   anchor_x, anchor_y, zoom, target_width):
+    """Encode a square cropped VP9 WebM clip downscaled to target width."""
+    vf = (
+        f"crop="
+        f"'min(iw,ih)/{zoom}:min(iw,ih)/{zoom}"
+        f":(iw-min(iw,ih)/{zoom})*{anchor_x}"
+        f":(ih-min(iw,ih)/{zoom})*{anchor_y}',"
+        f"scale={target_width}:{target_width}"
     )
     cmd = [
         "ffmpeg", "-ss", start,
@@ -156,6 +183,62 @@ def resolve_scene_path(stash, scene_id):
     return files[0]["path"], scene.get("title", "")
 
 
+def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
+                                     input_path, start, duration, bitrate,
+                                     anchor_x, anchor_y, zoom, upload_max_width):
+    """Generate WebM and upload to Stash, optionally saving permanent files."""
+    if tag_output_dir:
+        # Permanent file mode - encode full resolution
+        log.info(f"Saving permanent files to {tag_output_dir}")
+        output_dir = Path(tag_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"{tag_name}.webm"
+
+        encode_square_webm(
+            input_path, output_path, start, duration, bitrate,
+            anchor_x, anchor_y, zoom,
+        )
+
+        write_metadata(
+            tag_output_dir, tag_name, input_path, start, duration,
+            bitrate, anchor_x, anchor_y, zoom,
+        )
+
+        upload_tag_image(stash, tag_name, tag_id, output_path, upload_max_width)
+    else:
+        # Temp-only mode - optimize encoding
+        log.info("Temporary mode: files will not be saved permanently")
+
+        # Calculate crop dimensions to determine if we need downscaling
+        source_height = probe_video_dimension(input_path, "height")
+        crop_size = source_height / zoom
+
+        # If crop would exceed max_width, encode directly to max_width
+        encode_at_max_width = crop_size > upload_max_width
+
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+            temp_path = Path(tmp.name)
+
+        try:
+            if encode_at_max_width:
+                log.info(f"Encoding directly to {upload_max_width}px (crop would be {int(crop_size)}px)")
+                encode_square_webm_downscaled(
+                    input_path, temp_path, start, duration, bitrate,
+                    anchor_x, anchor_y, zoom, upload_max_width,
+                )
+            else:
+                encode_square_webm(
+                    input_path, temp_path, start, duration, bitrate,
+                    anchor_x, anchor_y, zoom,
+                )
+
+            upload_tag_image(stash, tag_name, tag_id, temp_path, upload_max_width)
+        finally:
+            # Ensure cleanup even if upload fails
+            if temp_path.exists():
+                temp_path.unlink()
+
+
 def set_tag_preview(stash, args, config):
     """Main task: extract clip and set as tag preview."""
     scene_id = args.get("scene_id")
@@ -170,9 +253,6 @@ def set_tag_preview(stash, args, config):
         sys.exit(1)
 
     tag_output_dir = config["tag_output_dir"]
-    if not tag_output_dir:
-        log.error("Tag Output Directory is not configured in plugin settings")
-        sys.exit(1)
 
     # Resolve scene file path
     input_path, scene_title = resolve_scene_path(stash, scene_id)
@@ -189,11 +269,6 @@ def set_tag_preview(stash, args, config):
     tag_id = tags[0]["id"]
     tag_name = tags[0]["name"]  # Use canonical name from Stash
 
-    # Prepare output
-    output_dir = Path(tag_output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{tag_name}.webm"
-
     start = format_time(start_seconds)
     duration = config["duration"]
     bitrate = config["bitrate"]
@@ -209,17 +284,12 @@ def set_tag_preview(stash, args, config):
         bitrate_value = int(bitrate.rstrip("k")) * pixel_ratio
         bitrate = f"{int(bitrate_value)}k"
 
-    encode_square_webm(
-        input_path, output_path, start, duration, bitrate,
-        anchor_x, anchor_y, zoom,
+    generate_and_upload_tag_preview(
+        stash, tag_name, tag_id, tag_output_dir,
+        input_path, start, duration, bitrate,
+        anchor_x, anchor_y, zoom, config["upload_max_width"],
     )
 
-    write_metadata(
-        tag_output_dir, tag_name, input_path, start, duration,
-        bitrate, anchor_x, anchor_y, zoom,
-    )
-
-    upload_tag_image(stash, tag_name, tag_id, output_path, config["upload_max_width"])
     log.info(f"Tag '{tag_name}' preview generated from scene '{scene_title}' (ID: {scene_id}) at {start}")
 
 

@@ -17,19 +17,19 @@ tasks:
     defaultArgs:
       mode: set_tag_preview
 settings:
-  tagOutputDir:
-    displayName: Tag Output Directory
-    description: Directory to save WebM clips and JSON metadata files.
-    type: STRING
   defaultDuration:
     displayName: Default Duration
-    description: Default clip duration in seconds.
+    description: Clip duration in seconds. Optional, defaults to 5.4s if not specified.
     type: STRING
-  defaultBitrate:
-    displayName: Default Bitrate
-    description: Default encoding bitrate (e.g. 2140k).
+  defaultMaxBitrate:
+    displayName: Default Max Bitrate
+    description: Encoding bitrate (e.g. 2140k). Optional, defaults to 2140k if not specified. Automatically scaled based on crop area.
     type: STRING
-  uploadMaxWidth:
-    displayName: Upload Max Width
-    description: Maximum width in pixels for uploaded previews. Larger files are downscaled.
+  defaultMaxWidth:
+    displayName: Default Max Width
+    description: Maximum width in pixels for uploaded previews (e.g. 720). Optional, defaults to 720px if not specified. Larger clips are downscaled before upload.
+    type: STRING
+  tagOutputDir:
+    displayName: Tag Output Directory
+    description: Directory to save permanent WebM clips and JSON metadata files. Optional - leave empty to use temp files only (files uploaded to Stash but not saved to disk).
     type: STRING
