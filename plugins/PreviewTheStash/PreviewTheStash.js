@@ -379,6 +379,7 @@
     // Time nudge buttons
     var timeGroup = document.createElement("div");
     timeGroup.className = "pts-toolbar-group";
+    timeGroup.id = "pts-time-group";
     var nudges = [
       { label: "−1s", delta: -1 },
       { label: "−.1s", delta: -0.1 },
@@ -434,12 +435,15 @@
     if (!toolbarEl) return;
     toolbarEl.style.display = "flex";
     var confirmBtn = document.getElementById("pts-confirm-btn");
+    var timeGroup = document.getElementById("pts-time-group");
     if (mode === "crop") {
       toolbarStatusEl.textContent = "Drag to position, resize corners to crop";
       if (confirmBtn) { confirmBtn.textContent = "Confirm Crop"; confirmBtn.style.display = ""; }
+      if (timeGroup) timeGroup.style.display = "";
     } else if (mode === "pick") {
       toolbarStatusEl.textContent = "Tap a tag below to set its preview";
       if (confirmBtn) confirmBtn.style.display = "none";
+      if (timeGroup) timeGroup.style.display = "none";
     }
   }
 
