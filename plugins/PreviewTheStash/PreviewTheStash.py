@@ -110,40 +110,19 @@ def probe_video_dimension(input_path, dimension="height"):
 
 
 def encode_square_webm(input_path, output_path, start, duration, bitrate,
-                       anchor_x, anchor_y, zoom):
-    """Encode a square cropped VP9 WebM clip."""
+                       anchor_x, anchor_y, zoom, target_width=None):
+    """Encode a square cropped VP9 WebM clip, optionally downscaled to target width."""
+    # Build crop filter
     vf = (
         f"crop="
         f"'min(iw,ih)/{zoom}:min(iw,ih)/{zoom}"
         f":(iw-min(iw,ih)/{zoom})*{anchor_x}"
         f":(ih-min(iw,ih)/{zoom})*{anchor_y}'"
     )
-    cmd = [
-        "ffmpeg", "-ss", start,
-        "-i", str(input_path),
-        "-t", str(duration),
-        "-vf", vf,
-        "-c:v", "libvpx-vp9",
-        "-b:v", bitrate,
-        "-an", "-y",
-        str(output_path),
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
-    if result.returncode != 0:
-        log.error(f"ffmpeg failed: {result.stderr}")
-        raise RuntimeError(f"ffmpeg encoding failed: {result.stderr}")
+    # Add scale filter if downscaling requested
+    if target_width:
+        vf += f",scale={target_width}:{target_width}"
 
-
-def encode_square_webm_downscaled(input_path, output_path, start, duration, bitrate,
-                                   anchor_x, anchor_y, zoom, target_width):
-    """Encode a square cropped VP9 WebM clip downscaled to target width."""
-    vf = (
-        f"crop="
-        f"'min(iw,ih)/{zoom}:min(iw,ih)/{zoom}"
-        f":(iw-min(iw,ih)/{zoom})*{anchor_x}"
-        f":(ih-min(iw,ih)/{zoom})*{anchor_y}',"
-        f"scale={target_width}:{target_width}"
-    )
     cmd = [
         "ffmpeg", "-ss", start,
         "-i", str(input_path),
@@ -287,9 +266,9 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
         try:
             if encode_at_max_width:
                 log.info(f"Encoding directly to {upload_max_width}px (crop would be {int(crop_size)}px)")
-                encode_square_webm_downscaled(
+                encode_square_webm(
                     input_path, temp_path, start, duration, bitrate,
-                    anchor_x, anchor_y, zoom, upload_max_width,
+                    anchor_x, anchor_y, zoom, target_width=upload_max_width,
                 )
             else:
                 encode_square_webm(
