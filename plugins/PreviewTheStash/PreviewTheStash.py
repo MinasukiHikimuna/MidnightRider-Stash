@@ -30,6 +30,24 @@ def sanitize_filename(name):
     return safe_name if safe_name else "unnamed"
 
 
+def parse_bitrate_value(bitrate):
+    """Parse bitrate string to numeric value in kbps."""
+    bitrate_str = str(bitrate).lower().strip()
+    try:
+        if bitrate_str.endswith("k"):
+            return int(bitrate_str[:-1])
+        if bitrate_str.endswith("m"):
+            return int(float(bitrate_str[:-1]) * 1000)
+        # Assume kbps if no suffix
+        value = int(bitrate_str)
+        if value <= 0:
+            raise ValueError
+        return value
+    except (ValueError, IndexError):
+        log.error(f"Invalid bitrate format: {bitrate}. Expected format: '2140k', '2M', or '2140'")
+        raise ValueError(f"Invalid bitrate format: {bitrate}") from None
+
+
 def get_config(stash):
     """Read plugin settings with defaults."""
     config = stash.get_configuration()
@@ -151,7 +169,7 @@ def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
     metadata_path.write_text(json.dumps({"versions": versions}, indent=2))
 
 
-def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
+def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width, bitrate):
     """Upload WebM as tag image, downscaling if needed."""
     width = probe_video_dimension(webm_path, "width")
     upload_path = webm_path
@@ -159,7 +177,8 @@ def upload_tag_image(stash, tag_name, tag_id, webm_path, max_width):
 
     if width > max_width:
         temp_path = Path(webm_path).parent / f"{tag_name}_upload.webm"
-        half_bitrate = f"{int(DEFAULT_BITRATE.rstrip('k')) // 2}k"
+        bitrate_kbps = parse_bitrate_value(bitrate)
+        half_bitrate = f"{bitrate_kbps // 2}k"
         cmd = [
             "ffmpeg", "-i", str(webm_path),
             "-vf", f"scale={max_width}:{max_width}",
@@ -222,7 +241,7 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
             bitrate, anchor_x, anchor_y, zoom,
         )
 
-        upload_tag_image(stash, tag_name, tag_id, output_path, upload_max_width)
+        upload_tag_image(stash, tag_name, tag_id, output_path, upload_max_width, bitrate)
     else:
         # Temp-only mode - optimize encoding
         log.info("Temporary mode: files will not be saved permanently")
@@ -250,7 +269,7 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
                     anchor_x, anchor_y, zoom,
                 )
 
-            upload_tag_image(stash, tag_name, tag_id, temp_path, upload_max_width)
+            upload_tag_image(stash, tag_name, tag_id, temp_path, upload_max_width, bitrate)
         finally:
             # Ensure cleanup even if upload fails
             if temp_path.exists():
