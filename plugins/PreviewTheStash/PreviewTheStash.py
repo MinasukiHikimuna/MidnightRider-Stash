@@ -3,6 +3,7 @@
 import base64
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,23 @@ from stashapi.stashapp import StashInterface
 DEFAULT_DURATION = 5.4
 DEFAULT_BITRATE = "2140k"
 DEFAULT_UPLOAD_MAX_WIDTH = 720
+
+
+def check_dependencies():
+    """Check that required external dependencies are available."""
+    missing = []
+    if not shutil.which("ffmpeg"):
+        missing.append("ffmpeg")
+    if not shutil.which("ffprobe"):
+        missing.append("ffprobe")
+
+    if missing:
+        log.error(f"Missing required dependencies: {', '.join(missing)}")
+        log.error("Please install FFmpeg: https://ffmpeg.org/download.html")
+        raise RuntimeError(
+            f"Missing required dependencies: {', '.join(missing)}. "
+            "Please install FFmpeg from https://ffmpeg.org/download.html"
+        )
 
 
 def sanitize_filename(name):
@@ -288,6 +306,9 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
 
 def set_tag_preview(stash, args, config):
     """Main task: extract clip and set as tag preview."""
+    # Check dependencies first
+    check_dependencies()
+
     scene_id = args.get("scene_id")
     start_seconds = float(args.get("start_seconds", 0))
     tag_name = args.get("tag_name", "")
