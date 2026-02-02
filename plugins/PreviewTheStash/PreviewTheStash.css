@@ -130,8 +130,8 @@
   min-width: 100px;
 }
 
-/* Mobile: fixed toolbar at bottom, enlarge corner handles */
-@media (pointer: coarse) {
+/* Mobile / narrow viewport: fixed toolbar at bottom, enlarge corner handles */
+@media (pointer: coarse), (max-width: 576px) {
   .pts-toolbar {
     position: fixed;
     bottom: 0;
