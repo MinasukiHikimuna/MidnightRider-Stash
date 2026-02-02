@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,18 @@ from stashapi.stashapp import StashInterface
 DEFAULT_DURATION = 5.4
 DEFAULT_BITRATE = "2140k"
 DEFAULT_UPLOAD_MAX_WIDTH = 720
+
+
+def sanitize_filename(name):
+    """Sanitize a string for safe use as a filename."""
+    # Remove or replace characters that are problematic in filenames
+    # Keep alphanumeric, spaces, hyphens, underscores, and periods
+    safe_name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    # Remove leading/trailing spaces and dots (problematic on Windows)
+    safe_name = safe_name.strip(". ")
+    # Collapse multiple underscores
+    safe_name = re.sub(r"_+", "_", safe_name)
+    return safe_name if safe_name else "unnamed"
 
 
 def get_config(stash):
@@ -114,7 +127,8 @@ def encode_square_webm_downscaled(input_path, output_path, start, duration, bitr
 def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
                    bitrate, anchor_x, anchor_y, zoom):
     """Write metadata JSON with version history."""
-    metadata_path = Path(tag_output_dir) / f"{tag_name}.json"
+    safe_name = sanitize_filename(tag_name)
+    metadata_path = Path(tag_output_dir) / f"{safe_name}.json"
     new_version = {
         "tag_name": tag_name,
         "source_video": str(input_path),
@@ -192,7 +206,8 @@ def generate_and_upload_tag_preview(stash, tag_name, tag_id, tag_output_dir,
         log.info(f"Saving permanent files to {tag_output_dir}")
         output_dir = Path(tag_output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"{tag_name}.webm"
+        safe_name = sanitize_filename(tag_name)
+        output_path = output_dir / f"{safe_name}.webm"
 
         encode_square_webm(
             input_path, output_path, start, duration, bitrate,
