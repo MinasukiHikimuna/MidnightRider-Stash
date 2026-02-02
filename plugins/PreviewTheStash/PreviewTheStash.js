@@ -590,13 +590,9 @@
     var sceneId = window.location.pathname.replace("/scenes/", "").split("/")[0];
     if (!sceneId || isNaN(sceneId)) return;
 
-    // Place button in scene toolbar next to Organized
-    var organizedBtn = document.querySelector(".scene-toolbar-group .organized-button");
-    var toolbar = organizedBtn ? organizedBtn.parentElement : (
-      document.querySelector(".scene-toolbar-group") ||
-      document.querySelector(".ml-auto .btn-group")
-    );
-    if (!toolbar) return;
+    var toolbarGroup = document.querySelector(".scene-toolbar-group") ||
+      document.querySelector(".ml-auto");
+    if (!toolbarGroup) return;
 
     var btn = document.createElement("button");
     btn.id = BUTTON_ID;
@@ -604,10 +600,19 @@
     btn.title = "Preview The Stash — set tag preview image";
     btn.innerHTML = "TAG";
     btn.addEventListener("click", onTagButtonClick);
-    if (organizedBtn) {
-      toolbar.insertBefore(btn, organizedBtn);
+
+    // Wrap in its own btn-group so it appears as a separate toolbar item
+    var group = document.createElement("div");
+    group.className = "btn-group";
+    group.setAttribute("role", "group");
+    group.appendChild(btn);
+
+    // Insert before the Organized button's group if possible
+    var organizedBtn = toolbarGroup.querySelector(".organized-button");
+    if (organizedBtn && organizedBtn.closest(".btn-group")) {
+      toolbarGroup.insertBefore(group, organizedBtn.closest(".btn-group"));
     } else {
-      toolbar.appendChild(btn);
+      toolbarGroup.appendChild(group);
     }
   }
 
