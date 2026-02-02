@@ -113,7 +113,7 @@ def encode_square_webm(input_path, output_path, start, duration, bitrate,
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
     if result.returncode != 0:
         log.error(f"ffmpeg failed: {result.stderr}")
-        sys.exit(1)
+        raise RuntimeError(f"ffmpeg encoding failed: {result.stderr}")
 
 
 def encode_square_webm_downscaled(input_path, output_path, start, duration, bitrate,
@@ -139,7 +139,7 @@ def encode_square_webm_downscaled(input_path, output_path, start, duration, bitr
     result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
     if result.returncode != 0:
         log.error(f"ffmpeg failed: {result.stderr}")
-        sys.exit(1)
+        raise RuntimeError(f"ffmpeg encoding failed: {result.stderr}")
 
 
 def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
@@ -211,11 +211,11 @@ def resolve_scene_path(stash, scene_id):
     scene = stash.find_scene(scene_id, fragment="id title files { path }")
     if not scene:
         log.error(f"Scene {scene_id} not found")
-        sys.exit(1)
+        raise ValueError(f"Scene {scene_id} not found")
     files = scene.get("files", [])
     if not files:
         log.error(f"Scene {scene_id} has no files")
-        sys.exit(1)
+        raise ValueError(f"Scene {scene_id} has no files")
     return files[0]["path"], scene.get("title", "")
 
 
@@ -287,18 +287,18 @@ def set_tag_preview(stash, args, config):
 
     if not scene_id or not tag_name:
         log.error("scene_id and tag_name are required")
-        sys.exit(1)
+        raise ValueError("scene_id and tag_name are required")
 
     # Validate parameters
     if zoom <= 0:
         log.error(f"zoom must be positive, got {zoom}")
-        sys.exit(1)
+        raise ValueError(f"zoom must be positive, got {zoom}")
     if not 0 <= anchor_x <= 1:
         log.error(f"anchor_x must be in range [0, 1], got {anchor_x}")
-        sys.exit(1)
+        raise ValueError(f"anchor_x must be in range [0, 1], got {anchor_x}")
     if not 0 <= anchor_y <= 1:
         log.error(f"anchor_y must be in range [0, 1], got {anchor_y}")
-        sys.exit(1)
+        raise ValueError(f"anchor_y must be in range [0, 1], got {anchor_y}")
 
     tag_output_dir = config["tag_output_dir"]
 
@@ -307,13 +307,13 @@ def set_tag_preview(stash, args, config):
 
     if not Path(input_path).exists():
         log.error(f"File not found: {input_path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Video file not found: {input_path}")
 
     # Find tag in Stash
     tags = stash.find_tags(f={"name": {"value": tag_name, "modifier": "EQUALS"}})
     if not tags:
         log.error(f"Tag '{tag_name}' not found")
-        sys.exit(1)
+        raise ValueError(f"Tag '{tag_name}' not found in Stash")
     tag_id = tags[0]["id"]
     tag_name = tags[0]["name"]  # Use canonical name from Stash
 
