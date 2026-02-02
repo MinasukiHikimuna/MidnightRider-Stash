@@ -66,6 +66,9 @@
 .pts-mode-active .scrubber-wrapper {
   display: none !important;
 }
+.pts-mode-active .vjs-big-button-group {
+  display: none !important;
+}
 
 /* Tag pick mode */
 .pts-pick-mode span.tag-item {
