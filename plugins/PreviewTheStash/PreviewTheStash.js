@@ -101,8 +101,6 @@
     return { anchor_x: ax, anchor_y: ay, zoom: zoom };
   }
 
-  function updateHud() {}
-
   // ------- Crop overlay rendering -------
 
   function renderCrop() {
@@ -122,7 +120,6 @@
     cropEl.style.top = top + "px";
     cropEl.style.width = sizePx + "px";
     cropEl.style.height = sizePx + "px";
-    updateHud();
   }
 
   function clampCrop() {
