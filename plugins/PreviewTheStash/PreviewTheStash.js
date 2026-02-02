@@ -27,7 +27,6 @@
   // DOM refs
   var overlayContainer = null;
   var cropEl = null;
-  var hudEl = null;
   var videoEl = null;
   var videoWrapper = null;
 
@@ -102,14 +101,7 @@
     return { anchor_x: ax, anchor_y: ay, zoom: zoom };
   }
 
-  function updateHud() {
-    if (!hudEl) return;
-    var params = cropToAnchorZoom();
-    hudEl.textContent =
-      "anchor-x: " + params.anchor_x.toFixed(2) +
-      "\nanchor-y: " + params.anchor_y.toFixed(2) +
-      "\nzoom:     " + params.zoom.toFixed(2);
-  }
+  function updateHud() {}
 
   // ------- Crop overlay rendering -------
 
@@ -182,11 +174,7 @@
       cropEl.appendChild(h);
     });
 
-    hudEl = document.createElement("div");
-    hudEl.className = "pts-hud";
-
     overlayContainer.appendChild(cropEl);
-    overlayContainer.appendChild(hudEl);
     videoWrapper.appendChild(overlayContainer);
 
     // Wait for both video metadata and layout before initializing crop
@@ -205,28 +193,45 @@
       setTimeout(function () { clearInterval(pollId); }, 10000);
     }
 
+    // --- Pointer helpers (mouse + touch) ---
+    function pointerXY(e) {
+      if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
     // --- Drag handling ---
-    cropEl.addEventListener("mousedown", function (e) {
+    function onDragStart(e) {
       if (e.target.classList.contains("pts-crop-handle")) return;
       e.preventDefault();
       e.stopPropagation();
+      var p = pointerXY(e);
       state.dragging = true;
-      state.dragStart = { mx: e.clientX, my: e.clientY };
+      state.dragStart = { mx: p.x, my: p.y };
       state.cropStart = { x: crop.x, y: crop.y };
-    });
+    }
+    cropEl.addEventListener("mousedown", onDragStart);
+    cropEl.addEventListener("touchstart", onDragStart, { passive: false });
 
     // --- Resize handling ---
-    cropEl.addEventListener("mousedown", function (e) {
+    function onResizeStart(e) {
       if (!e.target.classList.contains("pts-crop-handle")) return;
       e.preventDefault();
       e.stopPropagation();
+      var p = pointerXY(e);
       state.resizing = e.target.dataset.dir;
-      state.dragStart = { mx: e.clientX, my: e.clientY };
+      state.dragStart = { mx: p.x, my: p.y };
       state.cropStart = { x: crop.x, y: crop.y, size: crop.size };
-    });
+    }
+    cropEl.addEventListener("mousedown", onResizeStart);
+    cropEl.addEventListener("touchstart", onResizeStart, { passive: false });
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mousemove", onPointerMove);
+    document.addEventListener("mouseup", onPointerUp);
+    document.addEventListener("touchmove", onPointerMove, { passive: false });
+    document.addEventListener("touchend", onPointerUp);
+
+    // Prevent browser scroll/zoom while interacting with crop
+    overlayContainer.style.touchAction = "none";
   }
 
   function initCropDefaults() {
@@ -259,10 +264,12 @@
     };
   }
 
-  function onMouseMove(e) {
+  function onPointerMove(e) {
     if (!state.dragging && !state.resizing) return;
+    if (e.touches) e.preventDefault();
     var vr = getVideoRect();
-    var clamped = clampMouseToVideoRect(e.clientX, e.clientY);
+    var p = (e.touches && e.touches.length) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+    var clamped = clampMouseToVideoRect(p.x, p.y);
 
     if (state.dragging) {
       var dx = (clamped.x - state.dragStart.mx) / vr.w;
@@ -308,7 +315,7 @@
     }
   }
 
-  function onMouseUp() {
+  function onPointerUp() {
     state.dragging = false;
     state.resizing = false;
   }
@@ -318,10 +325,11 @@
       overlayContainer.remove();
       overlayContainer = null;
       cropEl = null;
-      hudEl = null;
     }
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
+    document.removeEventListener("mousemove", onPointerMove);
+    document.removeEventListener("mouseup", onPointerUp);
+    document.removeEventListener("touchmove", onPointerMove);
+    document.removeEventListener("touchend", onPointerUp);
   }
 
   // ------- Preview loop playback -------
@@ -346,6 +354,110 @@
     videoEl.pause();
   }
 
+  // ------- Button state helper -------
+
+  function setBtnState(btn, label, color) {
+    btn.textContent = label;
+    btn.style.color = color || "";
+  }
+
+  // ------- Floating toolbar -------
+
+  var toolbarEl = null;
+  var toolbarStatusEl = null;
+
+  function createToolbar() {
+    if (toolbarEl) return;
+    // Insert toolbar after the video player container
+    var playerContainer = document.querySelector(".video-js");
+    if (!playerContainer) return;
+    var insertAfter = playerContainer.parentElement;
+
+    toolbarEl = document.createElement("div");
+    toolbarEl.className = "pts-toolbar";
+
+    // Time nudge buttons
+    var timeGroup = document.createElement("div");
+    timeGroup.className = "pts-toolbar-group";
+    var nudges = [
+      { label: "−1s", delta: -1 },
+      { label: "−.1s", delta: -0.1 },
+      { label: "+.1s", delta: 0.1 },
+      { label: "+1s", delta: 1 },
+    ];
+    nudges.forEach(function (n) {
+      var b = document.createElement("button");
+      b.className = "pts-toolbar-btn";
+      b.textContent = n.label;
+      b.addEventListener("click", function () { nudgeTime(n.delta); });
+      timeGroup.appendChild(b);
+    });
+
+    // Status text
+    toolbarStatusEl = document.createElement("div");
+    toolbarStatusEl.className = "pts-toolbar-status";
+    toolbarStatusEl.textContent = "Drag to position, resize corners to crop";
+
+    // Action buttons
+    var actionGroup = document.createElement("div");
+    actionGroup.className = "pts-toolbar-group";
+
+    var cancelBtn = document.createElement("button");
+    cancelBtn.className = "pts-toolbar-btn pts-toolbar-cancel";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("click", function () {
+      var btn = document.getElementById(BUTTON_ID);
+      if (btn) deactivate(btn);
+    });
+
+    var confirmBtn = document.createElement("button");
+    confirmBtn.className = "pts-toolbar-btn pts-toolbar-confirm";
+    confirmBtn.id = "pts-confirm-btn";
+    confirmBtn.textContent = "Confirm Crop";
+    confirmBtn.addEventListener("click", function () {
+      var btn = document.getElementById(BUTTON_ID);
+      if (btn) onTagButtonClick();
+    });
+
+    actionGroup.appendChild(cancelBtn);
+    actionGroup.appendChild(confirmBtn);
+
+    toolbarEl.appendChild(timeGroup);
+    toolbarEl.appendChild(toolbarStatusEl);
+    toolbarEl.appendChild(actionGroup);
+
+    insertAfter.insertBefore(toolbarEl, playerContainer.nextSibling);
+  }
+
+  function showToolbar(mode) {
+    createToolbar();
+    if (!toolbarEl) return;
+    toolbarEl.style.display = "flex";
+    var confirmBtn = document.getElementById("pts-confirm-btn");
+    if (mode === "crop") {
+      toolbarStatusEl.textContent = "Drag to position, resize corners to crop";
+      if (confirmBtn) { confirmBtn.textContent = "Confirm Crop"; confirmBtn.style.display = ""; }
+    } else if (mode === "pick") {
+      toolbarStatusEl.textContent = "Tap a tag below to set its preview";
+      if (confirmBtn) confirmBtn.style.display = "none";
+    }
+  }
+
+  function hideToolbar() {
+    if (toolbarEl) toolbarEl.style.display = "none";
+  }
+
+  function destroyToolbar() {
+    if (toolbarEl) { toolbarEl.remove(); toolbarEl = null; toolbarStatusEl = null; }
+  }
+
+  function nudgeTime(delta) {
+    if (!videoEl) return;
+    loopStart = Math.max(0, loopStart + delta);
+    loopEnd = loopStart + PREVIEW_DURATION;
+    videoEl.currentTime = loopStart;
+  }
+
   // ------- State machine -------
 
   function activateCropMode(btn) {
@@ -353,11 +465,14 @@
     if (!videoEl) return;
     createOverlay();
     overlayContainer.classList.add("pts-active");
+    var playerRoot = videoWrapper && videoWrapper.closest(".VideoPlayer");
+    if (playerRoot) playerRoot.classList.add("pts-mode-active");
     state.active = true;
     state.picking = false;
-    btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#0f0;">CROP</span>';
+    setBtnState(btn, "CROP", "#0f0");
     startLoop();
     renderCrop();
+    showToolbar("crop");
   }
 
   function activatePickMode(btn) {
@@ -365,7 +480,8 @@
     overlayContainer.classList.remove("pts-active");
     state.picking = true;
     document.body.classList.add("pts-pick-mode");
-    btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#ff0;">PICK</span>';
+    setBtnState(btn, "PICK", "#ff0");
+    showToolbar("pick");
   }
 
   function deactivate(btn) {
@@ -373,8 +489,11 @@
     state.active = false;
     state.picking = false;
     document.body.classList.remove("pts-pick-mode");
+    var playerRoot = videoWrapper && videoWrapper.closest(".VideoPlayer");
+    if (playerRoot) playerRoot.classList.remove("pts-mode-active");
     destroyOverlay();
-    btn.innerHTML = '<span style="font-size:11px;line-height:3em;">TAG</span>';
+    setBtnState(btn, "TAG", "");
+    hideToolbar();
   }
 
   // ------- Tag picking -------
@@ -408,7 +527,7 @@
   // ------- Backend communication -------
 
   function runBackendTask(sceneId, startSeconds, anchorX, anchorY, zoom, tagName, btn) {
-    btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#f80;">RUN</span>';
+    setBtnState(btn, "RUN", "#f80");
 
     var mutation = [
       "mutation RunPluginTask(",
@@ -447,19 +566,19 @@
       .then(function (data) {
         if (data.errors) {
           console.error("PreviewTheStash error:", data.errors);
-          btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#f00;">ERR</span>';
+          setBtnState(btn, "ERR", "#f00");
         } else {
-          btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#0f0;">OK</span>';
+          setBtnState(btn, "OK", "#0f0");
         }
         setTimeout(function () {
-          btn.innerHTML = '<span style="font-size:11px;line-height:3em;">TAG</span>';
+          setBtnState(btn, "TAG", "");
         }, 2000);
       })
       .catch(function (err) {
         console.error("PreviewTheStash fetch error:", err);
-        btn.innerHTML = '<span style="font-size:11px;line-height:3em;color:#f00;">ERR</span>';
+        setBtnState(btn, "ERR", "#f00");
         setTimeout(function () {
-          btn.innerHTML = '<span style="font-size:11px;line-height:3em;">TAG</span>';
+          setBtnState(btn, "TAG", "");
         }, 2000);
       });
   }
@@ -471,27 +590,37 @@
     var sceneId = window.location.pathname.replace("/scenes/", "").split("/")[0];
     if (!sceneId || isNaN(sceneId)) return;
 
-    var controls = document.querySelector(".vjs-control-bar");
-    if (!controls) return;
+    // Place button in scene toolbar next to Organized
+    var organizedBtn = document.querySelector(".scene-toolbar-group .organized-button");
+    var toolbar = organizedBtn ? organizedBtn.parentElement : (
+      document.querySelector(".scene-toolbar-group") ||
+      document.querySelector(".ml-auto .btn-group")
+    );
+    if (!toolbar) return;
 
     var btn = document.createElement("button");
     btn.id = BUTTON_ID;
-    btn.className = "vjs-control vjs-button";
+    btn.className = "minimal btn btn-secondary pts-tag-btn";
     btn.title = "Preview The Stash — set tag preview image";
-    btn.innerHTML = '<span style="font-size:11px;line-height:3em;">TAG</span>';
-    btn.addEventListener("click", function () {
-      if (state.picking) {
-        // Cancel pick mode
-        deactivate(btn);
-      } else if (state.active) {
-        // Crop positioned, move to tag pick
-        activatePickMode(btn);
-      } else {
-        // Start crop mode
-        activateCropMode(btn);
-      }
-    });
-    controls.appendChild(btn);
+    btn.innerHTML = "TAG";
+    btn.addEventListener("click", onTagButtonClick);
+    if (organizedBtn) {
+      toolbar.insertBefore(btn, organizedBtn);
+    } else {
+      toolbar.appendChild(btn);
+    }
+  }
+
+  function onTagButtonClick() {
+    var btn = document.getElementById(BUTTON_ID);
+    if (!btn) return;
+    if (state.picking) {
+      deactivate(btn);
+    } else if (state.active) {
+      activatePickMode(btn);
+    } else {
+      activateCropMode(btn);
+    }
   }
 
   function waitForElement(selector, callback) {
@@ -501,7 +630,7 @@
   }
 
   function onScenePage() {
-    waitForElement(".vjs-control-bar", setup);
+    waitForElement(".scene-toolbar-group, .ml-auto .btn-group", setup);
   }
 
   // Initial load
@@ -516,6 +645,7 @@
     if (btn && (state.active || state.picking)) {
       deactivate(btn);
     }
+    destroyToolbar();
     if (e.detail.data.location.pathname.startsWith("/scenes/")) {
       onScenePage();
     }

@@ -56,20 +56,15 @@
 .pts-handle-e { right: 0; cursor: ew-resize; }
 .pts-handle-w { left: 0; cursor: ew-resize; }
 
-/* HUD showing anchor/zoom values */
-.pts-hud {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #0f0;
-  font-family: monospace;
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 3px;
-  pointer-events: none;
-  white-space: pre;
-  z-index: 11;
+/* Hide video.js controls and scrubber when PTS is active */
+.pts-mode-active .vjs-control-bar {
+  display: none !important;
+}
+.pts-mode-active .vjs-big-play-button {
+  display: none !important;
+}
+.pts-mode-active .scrubber-wrapper {
+  display: none !important;
 }
 
 /* Tag pick mode */
@@ -80,4 +75,89 @@
 
 .pts-pick-mode span.tag-item:hover {
   outline: 2px solid #0f0 !important;
+}
+
+/* TAG button in scene toolbar */
+.pts-tag-btn {
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Floating toolbar below video */
+.pts-toolbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 20;
+}
+
+.pts-toolbar-group {
+  display: flex;
+  gap: 4px;
+}
+
+.pts-toolbar-btn {
+  padding: 4px 10px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #333;
+  color: #eee;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 36px;
+}
+.pts-toolbar-btn:hover { background: #555; }
+.pts-toolbar-cancel { color: #f88; border-color: #a44; }
+.pts-toolbar-confirm { color: #8f8; border-color: #4a4; }
+
+.pts-toolbar-status {
+  color: #ccc;
+  font-size: 12px;
+  text-align: center;
+  flex: 1;
+  min-width: 100px;
+}
+
+/* Mobile: fixed toolbar at bottom, enlarge corner handles */
+@media (pointer: coarse) {
+  .pts-toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    z-index: 9999;
+  }
+  .pts-toolbar-group {
+    justify-content: center;
+  }
+  .pts-toolbar-status {
+    order: -1;
+    min-width: auto;
+  }
+  .pts-toolbar-btn {
+    min-height: 44px;
+    font-size: 15px;
+    padding: 6px 14px;
+  }
+  .pts-handle-nw, .pts-handle-ne, .pts-handle-se, .pts-handle-sw {
+    width: 20px; height: 20px;
+    margin: -4px;
+  }
+  .pts-handle-n, .pts-handle-s { left: 20px; right: 20px; }
+  .pts-handle-e, .pts-handle-w { top: 20px; bottom: 20px; }
 }
