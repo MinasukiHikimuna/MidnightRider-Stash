@@ -142,8 +142,11 @@ def write_metadata(tag_output_dir, tag_name, input_path, start, duration,
     }
     versions = []
     if metadata_path.exists():
-        existing = json.loads(metadata_path.read_text())
-        versions = existing.get("versions", [])
+        try:
+            existing = json.loads(metadata_path.read_text())
+            versions = existing.get("versions", [])
+        except json.JSONDecodeError:
+            log.warning(f"Existing metadata file {metadata_path} is corrupted, starting fresh")
     versions.insert(0, new_version)
     metadata_path.write_text(json.dumps({"versions": versions}, indent=2))
 
