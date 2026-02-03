@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
@@ -146,7 +147,7 @@ class StashCompleter:
         return None
 
     def get_or_create_missing_performer(
-        self, local_performer: any, performer_stash_id: str
+        self, local_performer: Any, performer_stash_id: str
     ) -> int:
         performer_in = self._convert_local_performer_to_missing_stash_input(local_performer)
         
