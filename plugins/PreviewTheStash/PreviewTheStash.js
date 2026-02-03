@@ -24,6 +24,10 @@
   var loopEnd = 0;
   var loopHandler = null;
 
+  // Video metadata
+  var frameRate = null;
+  var frameDuration = 0.01; // Default ~100fps, will be updated when frame rate is fetched
+
   // DOM refs
   var overlayContainer = null;
   var cropEl = null;
@@ -196,7 +200,7 @@
 
     var previewRight = document.createElement("div");
     previewRight.className = "pts-preview pts-preview-right";
-    previewRight.title = "Last frame";
+    previewRight.title = "Next frame (what would flash)";
 
     overlayContainer.appendChild(cropEl);
     overlayContainer.appendChild(previewLeft);
@@ -364,19 +368,24 @@
     if (!videoEl) return;
     loopStart = videoEl.currentTime;
     loopEnd = loopStart + PREVIEW_DURATION;
-    loopHandler = function () {
+
+    function checkLoop() {
       if (videoEl.currentTime >= loopEnd || videoEl.currentTime < loopStart) {
         videoEl.currentTime = loopStart;
       }
-    };
-    videoEl.addEventListener("timeupdate", loopHandler);
+      loopHandler = requestAnimationFrame(checkLoop);
+    }
+
+    loopHandler = requestAnimationFrame(checkLoop);
     videoEl.play();
   }
 
   function stopLoop() {
-    if (!videoEl || !loopHandler) return;
-    videoEl.removeEventListener("timeupdate", loopHandler);
-    loopHandler = null;
+    if (!videoEl) return;
+    if (loopHandler) {
+      cancelAnimationFrame(loopHandler);
+      loopHandler = null;
+    }
     videoEl.pause();
   }
 
@@ -438,7 +447,8 @@
     captureFrameAt(loopStart, function (dataUrl) {
       previewLeft.style.backgroundImage = "url(" + dataUrl + ")";
     });
-    captureFrameAt(Math.max(0, loopEnd - 0.1), function (dataUrl) {
+    // Show frame just after loop end so user can see what would flash
+    captureFrameAt(loopEnd + frameDuration, function (dataUrl) {
       previewRight.style.backgroundImage = "url(" + dataUrl + ")";
     });
   }
@@ -739,10 +749,33 @@
 
   // ------- Setup -------
 
+  function fetchFrameRate(sceneId) {
+    var query = "query FindScene($id: ID!) { findScene(id: $id) { files { frame_rate } } }";
+    fetch("/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query, variables: { id: sceneId } }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var scene = data.data && data.data.findScene;
+        if (scene && scene.files && scene.files[0] && scene.files[0].frame_rate) {
+          frameRate = scene.files[0].frame_rate;
+          frameDuration = 1 / frameRate;
+          console.log("PreviewTheStash: frame rate " + frameRate + " fps, frame duration " + frameDuration.toFixed(4) + "s");
+        }
+      })
+      .catch(function (err) {
+        console.warn("PreviewTheStash: could not fetch frame rate", err);
+      });
+  }
+
   function setup() {
     if (document.getElementById(BUTTON_ID)) return;
     var sceneId = window.location.pathname.replace("/scenes/", "").split("/")[0];
     if (!sceneId || isNaN(sceneId)) return;
+
+    fetchFrameRate(sceneId);
 
     var toolbarGroup = document.querySelector(".scene-toolbar-group") ||
       document.querySelector(".ml-auto");
