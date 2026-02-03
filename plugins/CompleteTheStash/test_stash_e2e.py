@@ -389,7 +389,7 @@ def test_stashdb(
     performer_alissa_local = local_stash_instance_stashdb.create_performer(
         {**performer_alissa, "tag_ids": [tag["id"]]}
     )
-    performer_alexis_local = local_stash_instance_stashdb.create_performer(
+    local_stash_instance_stashdb.create_performer(
         {**performer_alexis, "tag_ids": [tag["id"]]}
     )
 
@@ -557,7 +557,7 @@ def test_tpdb(
     performer_alissa_local = local_stash_instance_tpdb.create_performer(
         {**performer_alissa, "tag_ids": [tag["id"]]}
     )
-    performer_alexis_local = local_stash_instance_tpdb.create_performer(
+    local_stash_instance_tpdb.create_performer(
         {**performer_alexis, "tag_ids": [tag["id"]]}
     )
 
