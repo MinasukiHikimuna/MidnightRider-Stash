@@ -11,6 +11,9 @@ from StashCompleter import StashCompleter
 from StashDbClient import StashDbClient
 from TpdbClient import TpdbClient
 
+STASHDB_ENDPOINT = "https://stashdb.org/graphql"
+TPDB_ENDPOINT = "https://theporndb.net/graphql"
+
 
 @dataclass
 class MissingSceneSource:
@@ -132,7 +135,7 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         stash_db_configuration = MissingSceneSource(
             stashappAddress=complete_the_stash_config.get("missingStashAddress"),
             stashappApiKey=complete_the_stash_config.get("missingStashApiKey"),
-            stashboxEndpoint="https://stashdb.org/graphql",
+            stashboxEndpoint=STASHDB_ENDPOINT,
         )
 
     tpdb_configuration = None
@@ -142,7 +145,7 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         tpdb_configuration = MissingSceneSource(
             stashappAddress=complete_the_stash_config.get("missingStashTpdbAddress"),
             stashappApiKey=complete_the_stash_config.get("missingStashTpdbApiKey"),
-            stashboxEndpoint="https://theporndb.net/graphql",
+            stashboxEndpoint=TPDB_ENDPOINT,
         )
 
     return CompleteTheStashConfiguration(
