@@ -529,6 +529,7 @@
     destroyOverlay();
     setBtnState(btn, "TAG", "");
     hideToolbar();
+    if (videoEl) videoEl.focus();
   }
 
   // ------- Tag picking -------
