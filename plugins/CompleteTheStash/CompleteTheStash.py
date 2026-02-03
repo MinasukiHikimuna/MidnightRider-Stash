@@ -83,6 +83,60 @@ def get_matching_stashbox_config(
     return matching_stashbox
 
 
+def _validate_stashdb_config(config: dict) -> None:
+    """Validate StashDB missing Stash configuration."""
+    has_address = config.get("missingStashAddress")
+    has_api_key = config.get("missingStashApiKey")
+
+    if has_address or has_api_key:
+        if not has_address:
+            raise ValueError(
+                "URL for missing Stash for StashDB scenes is not configured. Please set in Plugins configuration."
+            )
+        if not has_api_key:
+            raise ValueError(
+                "API Key for missing Stash for StashDB scenes is not configured. Please set in Plugins configuration."
+            )
+
+
+def _validate_tpdb_config(config: dict) -> None:
+    """Validate TPDB missing Stash configuration."""
+    has_address = config.get("missingStashTpdbAddress")
+    has_api_key = config.get("missingStashTpdbApiKey")
+
+    if has_address or has_api_key:
+        if not has_address:
+            raise ValueError(
+                "URL for missing Stash for TPDB scenes is not configured. Please set in Plugins configuration."
+            )
+        if not has_api_key:
+            raise ValueError(
+                "API Key for missing Stash for TPDB scenes is not configured. Please set in Plugins configuration."
+            )
+
+
+def _create_stashdb_source(config: dict) -> MissingSceneSource | None:
+    """Create StashDB missing scene source configuration if available."""
+    if config.get("missingStashAddress") and config.get("missingStashApiKey"):
+        return MissingSceneSource(
+            stashapp_address=config.get("missingStashAddress"),
+            stashapp_api_key=config.get("missingStashApiKey"),
+            stashbox_endpoint=STASHDB_ENDPOINT,
+        )
+    return None
+
+
+def _create_tpdb_source(config: dict) -> MissingSceneSource | None:
+    """Create TPDB missing scene source configuration if available."""
+    if config.get("missingStashTpdbAddress") and config.get("missingStashTpdbApiKey"):
+        return MissingSceneSource(
+            stashapp_address=config.get("missingStashTpdbAddress"),
+            stashapp_api_key=config.get("missingStashTpdbApiKey"),
+            stashbox_endpoint=TPDB_ENDPOINT,
+        )
+    return None
+
+
 def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfiguration:
     plugins_configuration = local_configuration.get("plugins", {})
     complete_the_stash_config = plugins_configuration.get("CompleteTheStash")
@@ -93,63 +147,20 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
     if not complete_the_stash_config.get("performerTags"):
         raise ValueError("Performer tags are not configured.")
 
-    if (
-        not complete_the_stash_config.get("missingStashAddress")
-        and not complete_the_stash_config.get("missingStashApiKey")
-        and not complete_the_stash_config.get("missingStashTpdbAddress")
-        and not complete_the_stash_config.get("missingStashTpdbApiKey")
-    ):
+    _validate_stashdb_config(complete_the_stash_config)
+    _validate_tpdb_config(complete_the_stash_config)
+
+    stash_db_configuration = _create_stashdb_source(complete_the_stash_config)
+    tpdb_configuration = _create_tpdb_source(complete_the_stash_config)
+
+    if not stash_db_configuration and not tpdb_configuration:
         raise ValueError(
             "No missing Stash instances are configured. No missing scenes can be sourced. "
             "Are you missing configuration?"
         )
 
-    if complete_the_stash_config.get(
-        "missingStashAddress"
-    ) or complete_the_stash_config.get("missingStashApiKey"):
-        if not complete_the_stash_config.get("missingStashAddress"):
-            raise ValueError(
-                "URL for missing Stash for StashDB scenes is not configured. Please set in Plugins configuration."
-            )
-        if not complete_the_stash_config.get("missingStashApiKey"):
-            raise ValueError(
-                "API Key for missing Stash for StashDB scenes is not configured. Please set in Plugins configuration."
-            )
-
-    if complete_the_stash_config.get(
-        "missingStashTpdbAddress"
-    ) or complete_the_stash_config.get("missingStashTpdbApiKey"):
-        if not complete_the_stash_config.get("missingStashTpdbAddress"):
-            raise ValueError(
-                "URL for missing Stash for TPDB scenes is not configured. Please set in Plugins configuration."
-            )
-        if not complete_the_stash_config.get("missingStashTpdbApiKey"):
-            raise ValueError(
-                "API Key for missing Stash for TPDB scenes is not configured. Please set in Plugins configuration."
-            )
-
     performer_tags = [tag.strip() for tag in complete_the_stash_config.get("performerTags").split(",")]
     scene_exclude_tags = [tag.strip() for tag in complete_the_stash_config.get("sceneExcludeTags", "").split(",")]
-
-    stash_db_configuration = None
-    if complete_the_stash_config.get(
-        "missingStashAddress"
-    ) and complete_the_stash_config.get("missingStashApiKey"):
-        stash_db_configuration = MissingSceneSource(
-            stashapp_address=complete_the_stash_config.get("missingStashAddress"),
-            stashapp_api_key=complete_the_stash_config.get("missingStashApiKey"),
-            stashbox_endpoint=STASHDB_ENDPOINT,
-        )
-
-    tpdb_configuration = None
-    if complete_the_stash_config.get(
-        "missingStashTpdbAddress"
-    ) and complete_the_stash_config.get("missingStashTpdbApiKey"):
-        tpdb_configuration = MissingSceneSource(
-            stashapp_address=complete_the_stash_config.get("missingStashTpdbAddress"),
-            stashapp_api_key=complete_the_stash_config.get("missingStashTpdbApiKey"),
-            stashbox_endpoint=TPDB_ENDPOINT,
-        )
 
     return CompleteTheStashConfiguration(
         performer_tags=performer_tags,
