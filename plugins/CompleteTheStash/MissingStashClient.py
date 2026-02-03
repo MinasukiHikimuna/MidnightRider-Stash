@@ -79,3 +79,8 @@ class MissingStashClient:
 
     def find_all_scenes(self) -> list[Scene]:
         return self.missing_stash.find_scenes(fragment=SCENE_FRAGMENT)
+
+    def find_scenes_paginated(self, page: int, per_page: int) -> list[Scene]:
+        """Find scenes with pagination support."""
+        filter = {"page": page, "per_page": per_page}
+        return self.missing_stash.find_scenes(filter=filter, fragment=SCENE_FRAGMENT)

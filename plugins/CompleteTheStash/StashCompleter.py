@@ -4,7 +4,7 @@ import copy
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from constants import PERFORMERS_PER_PAGE
+from constants import PERFORMERS_PER_PAGE, SCENES_PER_PAGE
 
 if TYPE_CHECKING:
     from LocalStashClient import LocalStashClient
@@ -415,25 +415,47 @@ class StashCompleter:
             self.logger.info(f"{process_name}: No new scenes to create.")
 
     def _cleanup_duplicate_missing_scenes(self):
-        """Destroy scenes from missing Stash that now exist in local Stash."""
-        scenes_in_local_stash = self.local_stash_client.find_all_scenes()
-        scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
+        """Destroy scenes from missing Stash that now exist in local Stash.
 
-        local_scene_stash_ids = {self._get_stash_id(scene) for scene in scenes_in_local_stash}
-        local_scene_stash_ids.discard(None)
+        Uses pagination to avoid loading all scenes into memory at once.
+        """
+        # Build set of local scene stash_ids using pagination
+        self.logger.debug("Building set of local scene stash IDs...")
+        local_scene_stash_ids: set[str] = set()
+        page = 1
+        while True:
+            local_scenes_batch = self.local_stash_client.find_scenes_paginated(page, SCENES_PER_PAGE)
+            if not local_scenes_batch:
+                break
+            for scene in local_scenes_batch:
+                stash_id = self._get_stash_id(scene)
+                if stash_id:
+                    local_scene_stash_ids.add(stash_id)
+            if len(local_scenes_batch) < SCENES_PER_PAGE:
+                break
+            page += 1
 
-        scenes_to_destroy = []
-        for missing_scene in scenes_in_missing_stash:
-            missing_scene_stash_id = self._get_stash_id(missing_scene)
-            if missing_scene_stash_id in local_scene_stash_ids:
-                scenes_to_destroy.append(missing_scene)
+        self.logger.debug(f"Found {len(local_scene_stash_ids)} local scene stash IDs")
 
-        for scene in scenes_to_destroy:
-            self.missing_stash_client.destroy_scene(scene["id"])
-            self.logger.info(f"Destroyed missing scene: {scene['title']} (ID: {scene['id']})")
+        # Process missing scenes in batches and destroy duplicates
+        destroyed_count = 0
+        page = 1
+        while True:
+            missing_scenes_batch = self.missing_stash_client.find_scenes_paginated(page, SCENES_PER_PAGE)
+            if not missing_scenes_batch:
+                break
+            for missing_scene in missing_scenes_batch:
+                missing_scene_stash_id = self._get_stash_id(missing_scene)
+                if missing_scene_stash_id and missing_scene_stash_id in local_scene_stash_ids:
+                    self.missing_stash_client.destroy_scene(missing_scene["id"])
+                    self.logger.info(f"Destroyed missing scene: {missing_scene['title']} (ID: {missing_scene['id']})")
+                    destroyed_count += 1
+            if len(missing_scenes_batch) < SCENES_PER_PAGE:
+                break
+            page += 1
 
-        if len(scenes_to_destroy) > 0:
-            self.logger.info(f"Destroyed {len(scenes_to_destroy)} scenes from missing stash that exist in local stash.")
+        if destroyed_count > 0:
+            self.logger.info(f"Destroyed {destroyed_count} scenes from missing stash that exist in local stash.")
 
     def _ensure_performers_for_scenes(self, scenes: list) -> dict[str, int]:
         """Create/find all performers referenced in scenes, returns {stash_id: missing_id} map."""
