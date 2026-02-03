@@ -1,6 +1,6 @@
 name: PreviewTheStash
 description: Set animated tag preview images by cropping scene video clips with a visual overlay tool.
-version: 1.1.0
+version: 1.1.1
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 ui:
   javascript:

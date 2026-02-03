@@ -342,12 +342,8 @@
   }
 
   function onPointerUp() {
-    var wasInteracting = state.dragging || state.resizing;
     state.dragging = false;
     state.resizing = false;
-    if (wasInteracting) {
-      updatePreviews();
-    }
   }
 
   function destroyOverlay() {
