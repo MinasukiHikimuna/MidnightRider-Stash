@@ -122,10 +122,8 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
                 "API Key for missing Stash for TPDB scenes is not configured. Please set in Plugins configuration."
             )
 
-    performer_tags = complete_the_stash_config.get("performerTags").split(",")
-    scene_exclude_tags = complete_the_stash_config.get("sceneExcludeTags", "").split(
-        ","
-    )
+    performer_tags = [tag.strip() for tag in complete_the_stash_config.get("performerTags").split(",")]
+    scene_exclude_tags = [tag.strip() for tag in complete_the_stash_config.get("sceneExcludeTags", "").split(",")]
 
     stash_db_configuration = None
     if complete_the_stash_config.get(
