@@ -137,9 +137,9 @@ class StashCompleter:
             studio_create_input["image"] = studio_image
 
         self.logger.debug(f"Creating studio: {studio_name}")
-        studio = self.missing_stash_client.create_studio(studio_create_input)
-        if studio:
-            studio_id = studio["id"]
+        created_studio = self.missing_stash_client.create_studio(studio_create_input)
+        if created_studio:
+            studio_id = created_studio["id"]
             self.logger.info(f"Studio created: {studio_name}")
             return studio_id
 
