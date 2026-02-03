@@ -1,4 +1,6 @@
 .env
-.local-stash
+.local-stashdb-stash
+.local-tpdb-stash
 .missing-stashdb-stash
 .missing-tpdb-stash
+stash-macos
