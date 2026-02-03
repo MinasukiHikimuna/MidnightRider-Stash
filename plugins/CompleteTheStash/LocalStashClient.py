@@ -1,3 +1,7 @@
+import base64
+import mimetypes
+
+import requests
 from stashapi.stashapp import StashInterface
 
 
@@ -33,8 +37,6 @@ class LocalStashClient:
         performers = self.local_stash.find_performers(performer_filter, filter)
         # Download performer images using session cookie
         if performers:
-            import requests
-
             session = requests.Session()
             cookie = self.server_connection.get("SessionCookie", {})
             session.cookies.set(
@@ -51,8 +53,6 @@ class LocalStashClient:
                     try:
                         response = session.get(image_url)
                         response.raise_for_status()
-                        import base64
-                        import mimetypes
 
                         content_type = response.headers.get('Content-Type', '')
                         image_type = mimetypes.guess_extension(content_type)
