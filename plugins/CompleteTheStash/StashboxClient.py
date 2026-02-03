@@ -7,7 +7,7 @@ class StashboxClient(ABC):
         pass
 
     @abstractmethod
-    def query_studio_image(self, performer_stash_id):
+    def query_studio_image(self, studio_stash_id):
         pass
 
     @abstractmethod

@@ -39,7 +39,7 @@ class StashDbClient(StashboxClient):
         logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
         return None
 
-    def query_studio_image(self, performer_stash_id):
+    def query_studio_image(self, studio_stash_id):
         query = """
             query FindStudio($id: ID!) {
                 findStudio(id: $id) {
@@ -51,22 +51,22 @@ class StashDbClient(StashboxClient):
                 }
             }
         """
-        result = self._gql_query(query, {"id": performer_stash_id})
+        result = self._gql_query(query, {"id": studio_stash_id})
         if result:
-            performer_data = result["data"]["findStudio"]
+            studio_data = result["data"]["findStudio"]
             if (
-                performer_data
-                and performer_data["images"]
-                and len(performer_data["images"]) > 0
+                studio_data
+                and studio_data["images"]
+                and len(studio_data["images"]) > 0
             ):
-                return performer_data["images"][0]["url"]
+                return studio_data["images"][0]["url"]
             else:
                 logger.error(
-                    f"No image found for studio with Stash ID {performer_stash_id}."
+                    f"No image found for studio with Stash ID {studio_stash_id}."
                 )
                 return None
 
-        logger.error(f"Failed to query studio with Stash ID {performer_stash_id}.")
+        logger.error(f"Failed to query studio with Stash ID {studio_stash_id}.")
         return None
 
     def query_scenes(self, performer_stash_id):
