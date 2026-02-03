@@ -110,7 +110,7 @@ class StashCompleter:
                 },
             }
         )
-        if studios and len(studios) > 0:
+        if studios:
             if len(studios) > 1:
                 self.logger.warning(
                     f"Multiple studios found with stash ID {stash_id}. Using the first one."
@@ -154,7 +154,7 @@ class StashCompleter:
         existing_performers = self.missing_stash_client.find_performers_by_stash_id(
             performer_stash_id
         )
-        if existing_performers and len(existing_performers) > 0:
+        if existing_performers:
             if len(existing_performers) > 1:
                 self.logger.warning(
                     f"Multiple performers found with stash ID {performer_stash_id}. Using the first one."
@@ -464,7 +464,7 @@ class StashCompleter:
 
     def process_scene_by_stashbox_id(self, stashbox_id: str):
         scenes = self.missing_stash_client.find_scenes_by_stash_id(stashbox_id)
-        if scenes and len(scenes) > 0:
+        if scenes:
             if len(scenes) > 1:
                 self.logger.warning(
                     f"Multiple scenes found with stashbox ID {stashbox_id}. Using the first one."
