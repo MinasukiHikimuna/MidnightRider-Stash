@@ -148,7 +148,7 @@ class StashCompleter:
 
     def get_or_create_missing_performer(
         self, local_performer: Any, performer_stash_id: str
-    ) -> int:
+    ) -> int | None:
         performer_in = self._convert_local_performer_to_missing_stash_input(local_performer)
         
         existing_performers = self.missing_stash_client.find_performers_by_stash_id(
