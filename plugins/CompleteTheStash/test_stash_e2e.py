@@ -1,6 +1,9 @@
 import os
 import shutil
 import subprocess
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 
 import pytest
@@ -21,11 +24,14 @@ assert (
 ), "TPDB_API_KEY environment variable is not set"
 
 
-local_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"
+local_stashdb_port = 6661
+local_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"
 missing_stashdb_port = 6662
 missing_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"
 missing_tpdb_port = 6663
 missing_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2ODcyfQ.ta4AsOkuJ6tVoZoMVJmxioZgluGo6oiNks-crAqDj8E"
+local_tpdb_port = 6664
+local_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2OTAwfQ.Jd8W-1s8Dq_L6H2hXZJqvMkPvFkM7jKqL9H2hXZJqvM"
 
 
 def start_stash_process(executable_path, working_dir) -> subprocess.Popen[bytes]:
@@ -35,6 +41,29 @@ def start_stash_process(executable_path, working_dir) -> subprocess.Popen[bytes]
 def stop_stash_process(stash_process):
     stash_process.terminate()
     stash_process.wait()
+
+
+def wait_for_stash_ready(port, api_key=None, timeout=60, poll_interval=0.5):
+    """Wait for Stash to be ready to accept connections."""
+    url = f"http://localhost:{port}/graphql"
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            headers = {"Content-Type": "application/json"}
+            if api_key:
+                headers["ApiKey"] = api_key
+            req = urllib.request.Request(
+                url,
+                data=b'{"query":"{ systemStatus { status } }"}',
+                headers=headers,
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                if response.status == 200:
+                    return True
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+            pass
+        time.sleep(poll_interval)
+    raise TimeoutError(f"Stash on port {port} did not become ready within {timeout}s")
 
 
 def copy_files_to_plugin_directory(source_dir, target_dir, excluded_files):
@@ -111,7 +140,7 @@ class SceneBuilder:
 def local_stash_instance_stashdb():
     test_dir = os.path.dirname(os.path.abspath(__file__))
     template_dir = os.path.join(test_dir, ".template-stash")
-    local_working_dir = os.path.join(test_dir, ".local-stash")
+    local_working_dir = os.path.join(test_dir, ".local-stashdb-stash")
     plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
     executable_path = os.getenv("STASH_BIN")
     local_config_path = os.path.join(template_dir, "local-config.txt")
@@ -122,7 +151,8 @@ def local_stash_instance_stashdb():
 
     with open(local_config_path, "r") as file:
         local_config = yaml.safe_load(file)
-    local_config["api_key"] = local_api_key
+    local_config["api_key"] = local_stashdb_api_key
+    local_config["port"] = local_stashdb_port
 
     stashdb_found = False
     for stash_box in local_config.get("stash_boxes", []):
@@ -153,14 +183,15 @@ def local_stash_instance_stashdb():
     create_manifest_file(plugin_dir, files_copied)
 
     stash_process = start_stash_process(executable_path, local_working_dir)
+    wait_for_stash_ready(local_stashdb_port, api_key=local_stashdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
             "host": "localhost",
-            "port": 6661,
+            "port": local_stashdb_port,
             "logger": log,
-            "ApiKey": local_api_key,
+            "ApiKey": local_stashdb_api_key,
         }
     )
 
@@ -171,7 +202,7 @@ def local_stash_instance_stashdb():
 def local_stash_instance_tpdb():
     test_dir = os.path.dirname(os.path.abspath(__file__))
     template_dir = os.path.join(test_dir, ".template-stash")
-    local_working_dir = os.path.join(test_dir, ".local-stash")
+    local_working_dir = os.path.join(test_dir, ".local-tpdb-stash")
     plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
     executable_path = os.getenv("STASH_BIN")
     local_config_path = os.path.join(template_dir, "local-config.txt")
@@ -182,7 +213,8 @@ def local_stash_instance_tpdb():
 
     with open(local_config_path, "r") as file:
         local_config = yaml.safe_load(file)
-    local_config["api_key"] = local_api_key
+    local_config["api_key"] = local_tpdb_api_key
+    local_config["port"] = local_tpdb_port
 
     tpdb_found = False
     for stash_box in local_config.get("stash_boxes", []):
@@ -213,14 +245,15 @@ def local_stash_instance_tpdb():
     create_manifest_file(plugin_dir, files_copied)
 
     stash_process = start_stash_process(executable_path, local_working_dir)
+    wait_for_stash_ready(local_tpdb_port, api_key=local_tpdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
             "host": "localhost",
-            "port": 6661,
+            "port": local_tpdb_port,
             "logger": log,
-            "ApiKey": local_api_key,
+            "ApiKey": local_tpdb_api_key,
         }
     )
 
@@ -247,6 +280,7 @@ def missing_stash_instance_stashdb():
         yaml.safe_dump(missing_config, file)
 
     stash_process = start_stash_process(executable_path, missing_working_dir)
+    wait_for_stash_ready(missing_stashdb_port, api_key=missing_stashdb_api_key)
 
     yield StashInterface(
         {
@@ -281,6 +315,7 @@ def missing_stash_instance_tpdb():
         yaml.safe_dump(missing_config, file)
 
     stash_process = start_stash_process(executable_path, missing_working_dir)
+    wait_for_stash_ready(missing_tpdb_port, api_key=missing_tpdb_api_key)
 
     yield StashInterface(
         {
@@ -369,12 +404,10 @@ def test_stashdb(
     assert performer_kelly_missing is not None
     assert performer_kelly_missing.get("name") == "Kelly Collins"
     assert performer_kelly_missing.get("gender") == "FEMALE"
-    assert performer_kelly_missing.get("stash_ids") == [
-        {
-            "endpoint": graphql_endpoint,
-            "stash_id": performer_kelly.get("stash_ids")[0].get("stash_id"),
-        }
-    ]
+    kelly_stash_ids = performer_kelly_missing.get("stash_ids")
+    assert len(kelly_stash_ids) == 1
+    assert kelly_stash_ids[0]["endpoint"] == graphql_endpoint
+    assert kelly_stash_ids[0]["stash_id"] == performer_kelly.get("stash_ids")[0].get("stash_id")
     assert performer_kelly_missing.get("scene_count") > 0
     assert len(performer_kelly_missing.get("scenes")) > 0
 
@@ -539,12 +572,10 @@ def test_tpdb(
     assert performer_kelly_missing is not None
     assert performer_kelly_missing.get("name") == "Kelly Collins"
     assert performer_kelly_missing.get("gender") == "FEMALE"
-    assert performer_kelly_missing.get("stash_ids") == [
-        {
-            "endpoint": graphql_endpoint,
-            "stash_id": performer_kelly.get("stash_ids")[0].get("stash_id"),
-        }
-    ]
+    kelly_stash_ids = performer_kelly_missing.get("stash_ids")
+    assert len(kelly_stash_ids) == 1
+    assert kelly_stash_ids[0]["endpoint"] == graphql_endpoint
+    assert kelly_stash_ids[0]["stash_id"] == performer_kelly.get("stash_ids")[0].get("stash_id")
     assert performer_kelly_missing.get("scene_count") > 0
     assert len(performer_kelly_missing.get("scenes")) > 0
 
