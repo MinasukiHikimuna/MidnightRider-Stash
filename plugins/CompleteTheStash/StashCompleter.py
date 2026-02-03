@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -185,7 +186,8 @@ class StashCompleter:
         return None
 
     def _convert_local_performer_to_missing_stash_input(self, local_performer):
-        performer_input = local_performer.copy()
+        # Use deepcopy to avoid mutating nested structures in the original performer object
+        performer_input = copy.deepcopy(local_performer)
         del performer_input["id"]
 
         tag_ids = [self.missing_stash_client.get_or_create_tag(tag["name"])["id"] for tag in performer_input["tags"]]
