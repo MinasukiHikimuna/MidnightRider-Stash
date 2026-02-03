@@ -56,6 +56,18 @@
 .pts-handle-e { right: 0; cursor: ew-resize; }
 .pts-handle-w { left: 0; cursor: ew-resize; }
 
+/* Frame preview thumbnails on either side of crop box */
+.pts-preview {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  background-color: #222;
+  border: 2px solid #0f0;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
 /* Hide video.js controls and scrubber when PTS is active */
 .pts-mode-active .vjs-control-bar {
   display: none !important;

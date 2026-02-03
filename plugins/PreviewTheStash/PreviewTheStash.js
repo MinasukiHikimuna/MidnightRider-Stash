@@ -120,6 +120,24 @@
     cropEl.style.top = top + "px";
     cropEl.style.width = sizePx + "px";
     cropEl.style.height = sizePx + "px";
+
+    // Position preview thumbnails on either side of crop box
+    var previewLeft = overlayContainer.querySelector(".pts-preview-left");
+    var previewRight = overlayContainer.querySelector(".pts-preview-right");
+    if (previewLeft && previewRight) {
+      var previewSize = Math.min(80, sizePx * 0.3);
+      var previewTop = top + (sizePx - previewSize) / 2;
+
+      previewLeft.style.width = previewSize + "px";
+      previewLeft.style.height = previewSize + "px";
+      previewLeft.style.left = (left - previewSize - 8) + "px";
+      previewLeft.style.top = previewTop + "px";
+
+      previewRight.style.width = previewSize + "px";
+      previewRight.style.height = previewSize + "px";
+      previewRight.style.left = (left + sizePx + 8) + "px";
+      previewRight.style.top = previewTop + "px";
+    }
   }
 
   function clampCrop() {
@@ -171,7 +189,18 @@
       cropEl.appendChild(h);
     });
 
+    // Create preview containers for first/last frame
+    var previewLeft = document.createElement("div");
+    previewLeft.className = "pts-preview pts-preview-left";
+    previewLeft.title = "First frame";
+
+    var previewRight = document.createElement("div");
+    previewRight.className = "pts-preview pts-preview-right";
+    previewRight.title = "Last frame";
+
     overlayContainer.appendChild(cropEl);
+    overlayContainer.appendChild(previewLeft);
+    overlayContainer.appendChild(previewRight);
     videoWrapper.appendChild(overlayContainer);
 
     // Wait for both video metadata and layout before initializing crop
@@ -313,8 +342,12 @@
   }
 
   function onPointerUp() {
+    var wasInteracting = state.dragging || state.resizing;
     state.dragging = false;
     state.resizing = false;
+    if (wasInteracting) {
+      updatePreviews();
+    }
   }
 
   function destroyOverlay() {
@@ -349,6 +382,69 @@
     videoEl.removeEventListener("timeupdate", loopHandler);
     loopHandler = null;
     videoEl.pause();
+  }
+
+  // ------- Frame preview capture -------
+
+  var previewCaptureQueue = [];
+  var previewCaptureActive = false;
+
+  function captureFrameAt(timestamp, callback) {
+    // Queue the capture request
+    previewCaptureQueue.push({ timestamp: timestamp, callback: callback });
+    processPreviewQueue();
+  }
+
+  function processPreviewQueue() {
+    if (previewCaptureActive || previewCaptureQueue.length === 0) return;
+    previewCaptureActive = true;
+
+    var request = previewCaptureQueue.shift();
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = 120;
+    canvas.height = 120;
+
+    var originalTime = videoEl.currentTime;
+    var wasLooping = !!loopHandler;
+
+    function onSeeked() {
+      videoEl.removeEventListener("seeked", onSeeked);
+      // Draw the cropped region to canvas
+      var srcX = crop.x * videoEl.videoWidth;
+      var srcY = crop.y * videoEl.videoHeight;
+      var srcSize = crop.size * videoEl.videoHeight;
+      ctx.drawImage(videoEl, srcX, srcY, srcSize, srcSize, 0, 0, 120, 120);
+      request.callback(canvas.toDataURL("image/jpeg", 0.7));
+
+      // Restore position and continue queue
+      previewCaptureActive = false;
+      if (previewCaptureQueue.length > 0) {
+        processPreviewQueue();
+      } else {
+        // All captures done, restore original position
+        videoEl.currentTime = originalTime;
+      }
+    }
+
+    videoEl.addEventListener("seeked", onSeeked);
+    videoEl.currentTime = request.timestamp;
+  }
+
+  function updatePreviews() {
+    if (!overlayContainer || !videoEl) return;
+    var previewLeft = overlayContainer.querySelector(".pts-preview-left");
+    var previewRight = overlayContainer.querySelector(".pts-preview-right");
+    if (!previewLeft || !previewRight) return;
+
+    // Clear the queue and capture fresh frames
+    previewCaptureQueue = [];
+    captureFrameAt(loopStart, function (dataUrl) {
+      previewLeft.style.backgroundImage = "url(" + dataUrl + ")";
+    });
+    captureFrameAt(Math.max(0, loopEnd - 0.1), function (dataUrl) {
+      previewRight.style.backgroundImage = "url(" + dataUrl + ")";
+    });
   }
 
   // ------- Button state helper -------
@@ -494,6 +590,7 @@
     loopStart = Math.max(0, loopStart + delta);
     loopEnd = loopStart + PREVIEW_DURATION;
     videoEl.currentTime = loopStart;
+    updatePreviews();
   }
 
   // ------- State machine -------
@@ -511,6 +608,7 @@
     startLoop();
     renderCrop();
     showToolbar("crop");
+    updatePreviews();
     // Initialize loop toggle button state
     var loopToggleBtn = document.getElementById("pts-loop-toggle");
     if (loopToggleBtn) {
