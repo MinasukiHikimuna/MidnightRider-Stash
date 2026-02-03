@@ -1,6 +1,5 @@
 import requests
 import stashapi.log as logger
-
 from StashboxClient import StashboxClient
 
 
@@ -30,11 +29,10 @@ class StashDbClient(StashboxClient):
                 and len(performer_data["images"]) > 0
             ):
                 return performer_data["images"][0]["url"]
-            else:
-                logger.error(
-                    f"No image found for performer with Stash ID {performer_stash_id}."
-                )
-                return None
+            logger.error(
+                f"No image found for performer with Stash ID {performer_stash_id}."
+            )
+            return None
 
         logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
         return None
@@ -60,11 +58,10 @@ class StashDbClient(StashboxClient):
                 and len(studio_data["images"]) > 0
             ):
                 return studio_data["images"][0]["url"]
-            else:
-                logger.error(
-                    f"No image found for studio with Stash ID {studio_stash_id}."
-                )
-                return None
+            logger.error(
+                f"No image found for studio with Stash ID {studio_stash_id}."
+            )
+            return None
 
         logger.error(f"Failed to query studio with Stash ID {studio_stash_id}.")
         return None
@@ -166,8 +163,7 @@ class StashDbClient(StashboxClient):
         )
         if response.status_code == 200:
             return response.json()
-        else:
-            logger.error(
-                f"Query failed with status code {response.status_code}: {response.text}"
-            )
-            return None
+        logger.error(
+            f"Query failed with status code {response.status_code}: {response.text}"
+        )
+        return None

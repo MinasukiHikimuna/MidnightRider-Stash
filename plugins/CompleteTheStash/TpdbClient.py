@@ -1,6 +1,5 @@
 import requests
 import stashapi.log as logger
-
 from StashboxClient import StashboxClient
 
 
@@ -22,10 +21,9 @@ class TpdbClient(StashboxClient):
             performer_data = response.json()
             if performer_data.get("data"):
                 return performer_data["data"]["image"]
-            else:
-                logger.error(
-                    f"No image found for performer with Stash ID {performer_stash_id}."
-                )
+            logger.error(
+                f"No image found for performer with Stash ID {performer_stash_id}."
+            )
         else:
             logger.error(
                 f"Query failed with status code {response.status_code}: {response.text}"
@@ -42,10 +40,9 @@ class TpdbClient(StashboxClient):
             studio_data = response.json()
             if studio_data.get("data"):
                 return studio_data["data"]["logo"]
-            else:
-                logger.error(
-                    f"No image found for studio with Stash ID {studio_stash_id}."
-                )
+            logger.error(
+                f"No image found for studio with Stash ID {studio_stash_id}."
+            )
         else:
             logger.error(
                 f"Query failed with status code {response.status_code}: {response.text}"

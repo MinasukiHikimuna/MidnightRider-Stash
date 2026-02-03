@@ -150,7 +150,7 @@ class StashCompleter:
         self, local_performer: Any, performer_stash_id: str
     ) -> int | None:
         performer_in = self._convert_local_performer_to_missing_stash_input(local_performer)
-        
+
         existing_performers = self.missing_stash_client.find_performers_by_stash_id(
             performer_stash_id
         )
@@ -164,11 +164,11 @@ class StashCompleter:
             self.logger.debug(
                 f"Performer {performer_in['name']}: Matched with Stash ID {performer_stash_id} to missing Stash ID {performer_id}"
             )
-            
-            performer_in['id'] = performer_id
-            if performer_in['custom_fields']:
-                performer_in['custom_fields'] = { "full": performer_in['custom_fields'] }
-            self.missing_stash_client.update_performer(performer_in)            
+
+            performer_in["id"] = performer_id
+            if performer_in["custom_fields"]:
+                performer_in["custom_fields"] = { "full": performer_in["custom_fields"] }
+            self.missing_stash_client.update_performer(performer_in)
             return performer_id
 
         performer = self.missing_stash_client.create_performer(performer_in)
@@ -180,23 +180,23 @@ class StashCompleter:
 
     def _convert_local_performer_to_missing_stash_input(self, local_performer):
         performer_in = local_performer.copy()
-        del performer_in['id']
-        
-        tag_ids = [self.missing_stash_client.get_or_create_tag(tag['name'])['id'] for tag in performer_in['tags']]
-        performer_in['tag_ids'] = tag_ids
-        
+        del performer_in["id"]
+
+        tag_ids = [self.missing_stash_client.get_or_create_tag(tag["name"])["id"] for tag in performer_in["tags"]]
+        performer_in["tag_ids"] = tag_ids
+
         keys_to_delete = [
-            'tags', 'scenes', 'scene_count',
-            'image_count', 'gallery_count', 'performer_count',
-            'created_at', 'updated_at', 'image_path',
-            'o_counter',
-            'groups', 'group_count',
-            'movies', 'movie_count'
+            "tags", "scenes", "scene_count",
+            "image_count", "gallery_count", "performer_count",
+            "created_at", "updated_at", "image_path",
+            "o_counter",
+            "groups", "group_count",
+            "movies", "movie_count"
         ]
         for key_to_delete in keys_to_delete:
             if key_to_delete in performer_in:
                 del performer_in[key_to_delete]
-        
+
         return performer_in
 
     def find_selected_local_performers(self):
@@ -209,7 +209,7 @@ class StashCompleter:
 
         performers = []
         page = 1
-        self.logger.debug(f"Searching for local favorite performers...")
+        self.logger.debug("Searching for local favorite performers...")
         while True:
             performer_filter = {
                 "tags": {"value": selected_performer_tag_ids, "modifier": "INCLUDES"}
@@ -252,7 +252,7 @@ class StashCompleter:
         # Destroy scenes which weren't associated with a performer in local Stash but existed both in local and missing Stash.
         scenes_in_local_stash = self.local_stash_client.find_all_scenes()
         scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
-        
+
         # Match scenes in local and missing stashes by stash_id
         local_scene_stash_ids = {self._get_stash_id(scene) for scene in scenes_in_local_stash}
         local_scene_stash_ids.discard(None)
@@ -383,12 +383,12 @@ class StashCompleter:
         if len(created_scenes_stash_ids) > 0 or len(destroyed_scenes_stash_ids) > 0:
             created_msg = f"{len(created_scenes_stash_ids)} new missing scenes created. " if len(created_scenes_stash_ids) > 0 else ""
             destroyed_msg = f"{len(destroyed_scenes_stash_ids)} previously missing scenes destroyed." if len(destroyed_scenes_stash_ids) > 0 else ""
-            
+
             if created_msg and destroyed_msg:
                 msg = f"{created_msg}{destroyed_msg}"
             else:
                 msg = created_msg or destroyed_msg
-            
+
             self.logger.info(f"Performer {local_performer_details['name']}: {msg}.")
         else:
             self.logger.info(f"Performer {local_performer_details['name']}: No changes detected.")

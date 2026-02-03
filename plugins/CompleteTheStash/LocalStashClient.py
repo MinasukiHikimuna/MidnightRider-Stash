@@ -54,20 +54,20 @@ class LocalStashClient:
                         response = session.get(image_url)
                         response.raise_for_status()
 
-                        content_type = response.headers.get('Content-Type', '')
+                        content_type = response.headers.get("Content-Type", "")
                         image_type = mimetypes.guess_extension(content_type)
-                        
+
                         if image_type:
-                            image_type = image_type.lstrip('.')  # Remove leading dot
+                            image_type = image_type.lstrip(".")  # Remove leading dot
                         else:
-                            image_type = 'jpeg'  # Default to jpeg if type can't be determined
-                        
-                        image_data = base64.b64encode(response.content).decode('utf-8')
+                            image_type = "jpeg"  # Default to jpeg if type can't be determined
+
+                        image_data = base64.b64encode(response.content).decode("utf-8")
                         data_url = f"data:image/{image_type};base64,{image_data}"
-                        performer['image'] = data_url
+                        performer["image"] = data_url
                         self.logger.debug(f"Downloaded image for performer {performer['name']}")
                     except requests.RequestException as e:
-                        self.logger.error(f"Failed to download image for performer {performer['name']}: {str(e)}")
+                        self.logger.error(f"Failed to download image for performer {performer['name']}: {e!s}")
         return performers
 
     def find_scene_by_id(self, scene_id):

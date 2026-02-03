@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 import json
 import os
 import sys
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 import stashapi.log as logger
@@ -10,6 +10,7 @@ from MissingStashClient import MissingStashClient
 from StashCompleter import StashCompleter
 from StashDbClient import StashDbClient
 from TpdbClient import TpdbClient
+
 
 STASHDB_ENDPOINT = "https://stashdb.org/graphql"
 TPDB_ENDPOINT = "https://theporndb.net/graphql"
@@ -58,9 +59,8 @@ def get_json_input():
         if not fake_input:
             raise ValueError("FAKE_INPUT environment variable is not set.")
         return json.loads(fake_input)
-    else:
-        raw_input = sys.stdin.read()
-        return json.loads(raw_input)
+    raw_input = sys.stdin.read()
+    return json.loads(raw_input)
 
 
 def get_matching_stashbox_config(

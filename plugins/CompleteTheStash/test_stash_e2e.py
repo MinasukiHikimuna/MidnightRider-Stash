@@ -9,9 +9,9 @@ from datetime import datetime
 import pytest
 import yaml
 from dotenv import load_dotenv
-
-import stashapi.log as log
+from stashapi import log
 from stashapi.stashapp import StashInterface
+
 
 load_dotenv()
 
@@ -149,7 +149,7 @@ def local_stash_instance_stashdb():
         shutil.rmtree(local_working_dir)
     os.makedirs(local_working_dir, exist_ok=True)
 
-    with open(local_config_path, "r") as file:
+    with open(local_config_path) as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_stashdb_api_key
     local_config["port"] = local_stashdb_port
@@ -211,7 +211,7 @@ def local_stash_instance_tpdb():
         shutil.rmtree(local_working_dir)
     os.makedirs(local_working_dir, exist_ok=True)
 
-    with open(local_config_path, "r") as file:
+    with open(local_config_path) as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_tpdb_api_key
     local_config["port"] = local_tpdb_port
@@ -272,7 +272,7 @@ def missing_stash_instance_stashdb():
         shutil.rmtree(missing_working_dir)
     os.makedirs(missing_working_dir, exist_ok=True)
 
-    with open(missing_config_path, "r") as file:
+    with open(missing_config_path) as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_stashdb_api_key
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("STASHDB_API_KEY")
@@ -307,7 +307,7 @@ def missing_stash_instance_tpdb():
         shutil.rmtree(missing_working_dir)
     os.makedirs(missing_working_dir, exist_ok=True)
 
-    with open(missing_config_path, "r") as file:
+    with open(missing_config_path) as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_tpdb_api_key
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("TPDB_API_KEY")
@@ -456,7 +456,7 @@ def test_stashdb(
             "performer_ids": [performer_kelly_local["id"]],
         }
     )
-    
+
     # Test: Scene is created with stash_id without the performers to make sure the scenes are still destroyed.
     local_stash_instance_stashdb.create_scene(
         {
@@ -474,7 +474,7 @@ def test_stashdb(
         "CompleteTheStash", "Complete The Stash!"
     )
     local_stash_instance_stashdb.wait_for_job(job_id, timeout=600)
-    
+
     missing_gimme_all = missing_stash_instance_stashdb.find_scenes(
         {
             "stash_id_endpoint": {
@@ -624,7 +624,7 @@ def test_tpdb(
             "performer_ids": [performer_kelly_local["id"]],
         }
     )
-    
+
     # Test: Scene is created with stash_id without the performers to make sure the scenes are still destroyed.
     local_stash_instance_tpdb.create_scene(
         {
@@ -653,7 +653,7 @@ def test_tpdb(
         }
     )
     assert len(missing_gimme_all) == 0
-    
+
     missing_quality_work = missing_stash_instance_tpdb.find_scenes(
         {
             "stash_id_endpoint": {
