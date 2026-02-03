@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 import stashapi.log as logger
 
@@ -6,7 +8,7 @@ from StashboxClient import StashboxClient
 
 
 class TpdbClient(StashboxClient):
-    def __init__(self, endpoint, api_key):
+    def __init__(self, endpoint: str, api_key: str) -> None:
         self.endpoint = endpoint
         self.api_key = api_key
         self.headers = {
@@ -14,7 +16,7 @@ class TpdbClient(StashboxClient):
             "Authorization": f"Bearer {self.api_key}",
         }
 
-    def query_performer_image(self, performer_stash_id):
+    def query_performer_image(self, performer_stash_id: str) -> str | None:
         response = requests.get(
             f"https://api.theporndb.net/performers/{performer_stash_id}",
             headers=self.headers,
@@ -33,7 +35,7 @@ class TpdbClient(StashboxClient):
 
         return None
 
-    def query_studio_image(self, studio_stash_id):
+    def query_studio_image(self, studio_stash_id: str) -> str | None:
         response = requests.get(
             f"https://api.theporndb.net/sites/{studio_stash_id}",
             headers=self.headers,
@@ -52,7 +54,7 @@ class TpdbClient(StashboxClient):
 
         return None
 
-    def query_scenes(self, performer_stash_id):
+    def query_scenes(self, performer_stash_id: str) -> list[dict[str, Any]] | None:
         performer_response = requests.get(
             f"https://api.theporndb.net/performers/{performer_stash_id}",
             headers=self.headers,

@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 import stashapi.log as logger
 
@@ -7,11 +9,11 @@ from StashboxClient import StashboxClient
 
 
 class StashDbClient(StashboxClient):
-    def __init__(self, endpoint, api_key):
+    def __init__(self, endpoint: str, api_key: str) -> None:
         self.endpoint = endpoint
         self.api_key = api_key
 
-    def query_performer_image(self, performer_stash_id):
+    def query_performer_image(self, performer_stash_id: str) -> str | None:
         result = self._gql_query(FIND_PERFORMER_QUERY, {"id": performer_stash_id})
         if result:
             performer_data = result["data"]["findPerformer"]
@@ -29,7 +31,7 @@ class StashDbClient(StashboxClient):
         logger.error(f"Failed to query performer with Stash ID {performer_stash_id}.")
         return None
 
-    def query_studio_image(self, studio_stash_id):
+    def query_studio_image(self, studio_stash_id: str) -> str | None:
         result = self._gql_query(FIND_STUDIO_QUERY, {"id": studio_stash_id})
         if result:
             studio_data = result["data"]["findStudio"]
@@ -47,7 +49,7 @@ class StashDbClient(StashboxClient):
         logger.error(f"Failed to query studio with Stash ID {studio_stash_id}.")
         return None
 
-    def query_scenes(self, performer_stash_id):
+    def query_scenes(self, performer_stash_id: str) -> list[dict[str, Any]]:
         query = f"""
             query QueryScenes($stash_ids: [ID!]!, $page: Int!) {{
                 queryScenes(
@@ -198,7 +200,7 @@ class StashDbClient(StashboxClient):
         logger.warning(f"Tag '{tag_name}' not found on StashDB.")
         return None
 
-    def _paginate_scenes(self, query, variables):
+    def _paginate_scenes(self, query: str, variables: dict[str, Any]) -> list[dict[str, Any]]:
         scenes = []
         page = 1
         total_scenes = None
@@ -215,7 +217,7 @@ class StashDbClient(StashboxClient):
                 break
         return scenes
 
-    def _gql_query(self, query, variables=None):
+    def _gql_query(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any] | None:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Apikey"] = self.api_key
