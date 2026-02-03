@@ -1,5 +1,7 @@
 from stashapi.stashapp import StashInterface
 
+from graphql_queries import PERFORMER_FRAGMENT, SCENE_FRAGMENT
+
 
 class MissingStashClient:
     def __init__(self, scheme, host, port, api_key, stash_db_endpoint, logger):
@@ -36,23 +38,7 @@ class MissingStashClient:
 
     def find_performer(self, performer_id: int) -> dict:
         create = False
-        fragment = """
-            id
-            name
-            stash_ids {
-                stash_id
-                endpoint
-            }
-            scenes {
-                id
-                title
-                stash_ids {
-                    stash_id
-                    endpoint
-                }
-            }
-            """
-        return self.missing_stash.find_performer(performer_id, create, fragment)
+        return self.missing_stash.find_performer(performer_id, create, PERFORMER_FRAGMENT)
 
     def find_studios(self, studio_filter):
         return self.missing_stash.find_studios(studio_filter)
@@ -89,6 +75,4 @@ class MissingStashClient:
         )
 
     def find_all_scenes(self):
-        return self.missing_stash.find_scenes(
-            fragment="id title stash_ids { stash_id endpoint }"
-        )
+        return self.missing_stash.find_scenes(fragment=SCENE_FRAGMENT)

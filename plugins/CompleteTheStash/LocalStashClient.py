@@ -5,6 +5,7 @@ import requests
 from stashapi.stashapp import StashInterface
 
 from constants import DEFAULT_IMAGE_FORMAT
+from graphql_queries import PERFORMER_FRAGMENT, SCENE_FRAGMENT
 
 
 class LocalStashClient:
@@ -74,26 +75,10 @@ class LocalStashClient:
 
     def find_performer(self, performer_id: int) -> dict:
         create = False
-        fragment = """
-        id
-        name
-        stash_ids {
-            stash_id
-            endpoint
-        }
-        scenes {
-            id
-            title
-            stash_ids {
-                stash_id
-                endpoint
-            }
-        }
-        """
-        return self.local_stash.find_performer(performer_id, create, fragment)
+        return self.local_stash.find_performer(performer_id, create, PERFORMER_FRAGMENT)
 
     def find_all_scenes(self):
-        return self.local_stash.find_scenes(fragment="id title stash_ids { stash_id endpoint }")
+        return self.local_stash.find_scenes(fragment=SCENE_FRAGMENT)
 
     def find_studios_by_tags(self, tag_ids: list[str]):
         studios = []

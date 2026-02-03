@@ -2,6 +2,7 @@ import requests
 import stashapi.log as logger
 
 from constants import SCENES_PER_PAGE
+from graphql_queries import FIND_PERFORMER_QUERY, FIND_STUDIO_QUERY
 from StashboxClient import StashboxClient
 
 
@@ -11,18 +12,7 @@ class StashDbClient(StashboxClient):
         self.api_key = api_key
 
     def query_performer_image(self, performer_stash_id):
-        query = """
-            query FindPerformer($id: ID!) {
-                findPerformer(id: $id) {
-                    id
-                    images {
-                        id
-                        url
-                    }
-                }
-            }
-        """
-        result = self._gql_query(query, {"id": performer_stash_id})
+        result = self._gql_query(FIND_PERFORMER_QUERY, {"id": performer_stash_id})
         if result:
             performer_data = result["data"]["findPerformer"]
             if (
@@ -40,18 +30,7 @@ class StashDbClient(StashboxClient):
         return None
 
     def query_studio_image(self, studio_stash_id):
-        query = """
-            query FindStudio($id: ID!) {
-                findStudio(id: $id) {
-                    id
-                    images {
-                        id
-                        url
-                    }
-                }
-            }
-        """
-        result = self._gql_query(query, {"id": studio_stash_id})
+        result = self._gql_query(FIND_STUDIO_QUERY, {"id": studio_stash_id})
         if result:
             studio_data = result["data"]["findStudio"]
             if (
