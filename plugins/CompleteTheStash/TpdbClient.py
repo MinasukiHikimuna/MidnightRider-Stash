@@ -1,5 +1,7 @@
 import requests
 import stashapi.log as logger
+
+from constants import SCENES_PER_PAGE
 from StashboxClient import StashboxClient
 
 
@@ -119,7 +121,7 @@ class TpdbClient(StashboxClient):
         page = 1
         separator = "&" if "?" in base_url else "?"
         while True:
-            url = f"{base_url}{separator}page={page}&per_page=25"
+            url = f"{base_url}{separator}page={page}&per_page={SCENES_PER_PAGE}"
             logger.debug(f"Querying scenes from {url}")
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:

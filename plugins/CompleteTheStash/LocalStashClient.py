@@ -4,6 +4,8 @@ import mimetypes
 import requests
 from stashapi.stashapp import StashInterface
 
+from constants import DEFAULT_IMAGE_FORMAT
+
 
 class LocalStashClient:
     def __init__(self, server_connection: dict, logger):
@@ -57,7 +59,7 @@ class LocalStashClient:
                         content_type = response.headers.get("Content-Type", "")
                         image_type = mimetypes.guess_extension(content_type)
 
-                        image_type = image_type.lstrip(".") if image_type else "jpeg"
+                        image_type = image_type.lstrip(".") if image_type else DEFAULT_IMAGE_FORMAT
 
                         image_data = base64.b64encode(response.content).decode("utf-8")
                         data_url = f"data:image/{image_type};base64,{image_data}"

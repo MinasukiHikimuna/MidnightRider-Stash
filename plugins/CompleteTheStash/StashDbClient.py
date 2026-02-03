@@ -1,5 +1,7 @@
 import requests
 import stashapi.log as logger
+
+from constants import SCENES_PER_PAGE
 from StashboxClient import StashboxClient
 
 
@@ -227,7 +229,7 @@ class StashDbClient(StashboxClient):
                 scenes_data = result["data"]["queryScenes"]
                 scenes.extend(scenes_data["scenes"])
                 total_scenes = total_scenes or scenes_data["count"]
-                if len(scenes) >= total_scenes or len(scenes_data["scenes"]) < 25:
+                if len(scenes) >= total_scenes or len(scenes_data["scenes"]) < SCENES_PER_PAGE:
                     break
                 page += 1
             else:

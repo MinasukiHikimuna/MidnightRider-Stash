@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import stashapi.log as logger
+from constants import STASHDB_ENDPOINT, TPDB_ENDPOINT
 from LocalStashClient import LocalStashClient
 from MissingStashClient import MissingStashClient
 from StashCompleter import StashCompleter

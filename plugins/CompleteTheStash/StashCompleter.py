@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING, Any
 
+from constants import PERFORMERS_PER_PAGE
 
 if TYPE_CHECKING:
     from LocalStashClient import LocalStashClient
@@ -219,10 +220,10 @@ class StashCompleter:
             performer_filter = {
                 "tags": {"value": selected_performer_tag_ids, "modifier": "INCLUDES"}
             }
-            filter = {"page": page, "per_page": 25}
+            filter = {"page": page, "per_page": PERFORMERS_PER_PAGE}
             result = self.local_stash_client.find_performers(performer_filter, filter)
             performers.extend(result)
-            if len(result) < 25:
+            if len(result) < PERFORMERS_PER_PAGE:
                 break
             page += 1
 
