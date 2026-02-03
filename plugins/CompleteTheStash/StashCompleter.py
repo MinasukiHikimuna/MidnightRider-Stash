@@ -21,20 +21,20 @@ class StashCompleter:
         self.config = config
         self.logger = logger
 
+    def _get_stash_id(self, item: dict) -> str | None:
+        """Extract stash_id from an item's stash_ids for the configured endpoint."""
+        endpoint = self.config.get("stashboxEndpoint")
+        return next(
+            (sid["stash_id"] for sid in item.get("stash_ids", []) if sid.get("endpoint") == endpoint),
+            None,
+        )
+
     def compare_scenes(self, local_scenes, existing_missing_scenes, stashbox_scenes):
-        local_scene_ids = {
-            stash_id["stash_id"]
-            for scene in local_scenes
-            for stash_id in scene["stash_ids"]
-            if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
-        }
+        local_scene_ids = {self._get_stash_id(scene) for scene in local_scenes}
+        local_scene_ids.discard(None)
         self.logger.trace(f"Local scene IDs: {local_scene_ids}")
-        existing_missing_scene_ids = {
-            stash_id["stash_id"]
-            for scene in existing_missing_scenes
-            for stash_id in scene["stash_ids"]
-            if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
-        }
+        existing_missing_scene_ids = {self._get_stash_id(scene) for scene in existing_missing_scenes}
+        existing_missing_scene_ids.discard(None)
         self.logger.trace(f"Existing missing scene IDs: {existing_missing_scene_ids}")
 
         new_missing_scenes = [
@@ -230,14 +230,7 @@ class StashCompleter:
 
         for local_performer in selected_local_performers:
             local_performer_name = local_performer["name"]
-            performer_stash_id: str = next(
-                (
-                    sid["stash_id"]
-                    for sid in local_performer["stash_ids"]
-                    if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-                ),
-                None,
-            )
+            performer_stash_id = self._get_stash_id(local_performer)
             if not performer_stash_id:
                 self.logger.warning(
                     f"Performer {local_performer_name} does not have a Stashbox ID for endpoint {self.config.get('stashboxEndpoint')}. Skipping..."
@@ -261,23 +254,12 @@ class StashCompleter:
         scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
         
         # Match scenes in local and missing stashes by stash_id
-        local_scene_stash_ids = {
-            stash_id["stash_id"]
-            for scene in scenes_in_local_stash
-            for stash_id in scene["stash_ids"]
-            if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
-        }
+        local_scene_stash_ids = {self._get_stash_id(scene) for scene in scenes_in_local_stash}
+        local_scene_stash_ids.discard(None)
 
         scenes_to_destroy = []
         for missing_scene in scenes_in_missing_stash:
-            missing_scene_stash_id = next(
-                (
-                    stash_id["stash_id"]
-                    for stash_id in missing_scene["stash_ids"]
-                    if stash_id.get("endpoint") == self.config.get("stashboxEndpoint")
-                ),
-                None,
-            )
+            missing_scene_stash_id = self._get_stash_id(missing_scene)
             if missing_scene_stash_id in local_scene_stash_ids:
                 scenes_to_destroy.append(missing_scene)
 
@@ -301,14 +283,7 @@ class StashCompleter:
 
         self.logger.info(f"Performer {local_performer_details['name']}: Processing...")
 
-        performer_stash_id = next(
-            (
-                sid["stash_id"]
-                for sid in local_performer_details["stash_ids"]
-                if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-            ),
-            None,
-        )
+        performer_stash_id = self._get_stash_id(local_performer_details)
 
         missing_performer_id = missing_performers_by_stash_id.get(performer_stash_id)
         missing_performer_details = self.missing_stash_client.find_performer(
@@ -337,23 +312,12 @@ class StashCompleter:
 
         # Create sets for quick lookup
         stashbox_scene_ids = {scene["id"] for scene in filtered_stashbox_scenes}
-        local_scene_stash_ids = {
-            sid["stash_id"]
-            for local_scene in local_scenes
-            for sid in local_scene["stash_ids"]
-            if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-        }
+        local_scene_stash_ids = {self._get_stash_id(scene) for scene in local_scenes}
+        local_scene_stash_ids.discard(None)
 
         destroyed_scenes_stash_ids = []
         for existing_missing_scene in existing_missing_scenes:
-            existing_missing_scene_stash_id = next(
-                (
-                    sid["stash_id"]
-                    for sid in existing_missing_scene["stash_ids"]
-                    if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-                ),
-                None,
-            )
+            existing_missing_scene_stash_id = self._get_stash_id(existing_missing_scene)
 
             # Destroy if scene exists in local stash
             if existing_missing_scene_stash_id in local_scene_stash_ids:
@@ -435,14 +399,7 @@ class StashCompleter:
             self.logger.error(f"Scene {scene_id} not found.")
             return
 
-        stashbox_id = next(
-            (
-                sid["stash_id"]
-                for sid in scene["stash_ids"]
-                if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-            ),
-            None,
-        )
+        stashbox_id = self._get_stash_id(scene)
         if not stashbox_id:
             self.logger.error(f"Scene {scene_id} does not have a stashbox ID.")
             return
