@@ -154,7 +154,7 @@ class StashCompleter:
     def get_or_create_missing_performer(
         self, local_performer: Any, performer_stash_id: str
     ) -> int | None:
-        performer_in = self._convert_local_performer_to_missing_stash_input(local_performer)
+        performer_input = self._convert_local_performer_to_missing_stash_input(local_performer)
 
         existing_performers = self.missing_stash_client.find_performers_by_stash_id(
             performer_stash_id
@@ -167,29 +167,29 @@ class StashCompleter:
 
             performer_id = existing_performers[0]["id"]
             self.logger.debug(
-                f"Performer {performer_in['name']}: Matched with Stash ID {performer_stash_id} "
+                f"Performer {performer_input['name']}: Matched with Stash ID {performer_stash_id} "
                 f"to missing Stash ID {performer_id}"
             )
 
-            performer_in["id"] = performer_id
-            if performer_in.get("custom_fields"):
-                performer_in["custom_fields"] = { "full": performer_in["custom_fields"] }
-            self.missing_stash_client.update_performer(performer_in)
+            performer_input["id"] = performer_id
+            if performer_input.get("custom_fields"):
+                performer_input["custom_fields"] = { "full": performer_input["custom_fields"] }
+            self.missing_stash_client.update_performer(performer_input)
             return performer_id
 
-        performer = self.missing_stash_client.create_performer(performer_in)
+        performer = self.missing_stash_client.create_performer(performer_input)
         if performer:
-            self.logger.info(f"Performer created: {performer_in['name']} (stashbox ID: {performer_stash_id})")
+            self.logger.info(f"Performer created: {performer_input['name']} (stashbox ID: {performer_stash_id})")
             return performer["id"]
-        self.logger.error(f"Failed to create performer '{performer_in['name']}'")
+        self.logger.error(f"Failed to create performer '{performer_input['name']}'")
         return None
 
     def _convert_local_performer_to_missing_stash_input(self, local_performer):
-        performer_in = local_performer.copy()
-        del performer_in["id"]
+        performer_input = local_performer.copy()
+        del performer_input["id"]
 
-        tag_ids = [self.missing_stash_client.get_or_create_tag(tag["name"])["id"] for tag in performer_in["tags"]]
-        performer_in["tag_ids"] = tag_ids
+        tag_ids = [self.missing_stash_client.get_or_create_tag(tag["name"])["id"] for tag in performer_input["tags"]]
+        performer_input["tag_ids"] = tag_ids
 
         keys_to_delete = [
             "tags", "scenes", "scene_count",
@@ -200,10 +200,10 @@ class StashCompleter:
             "movies", "movie_count"
         ]
         for key_to_delete in keys_to_delete:
-            if key_to_delete in performer_in:
-                del performer_in[key_to_delete]
+            if key_to_delete in performer_input:
+                del performer_input[key_to_delete]
 
-        return performer_in
+        return performer_input
 
     def find_selected_local_performers(self):
         selected_performer_tags = self.config.get("performerTags")
