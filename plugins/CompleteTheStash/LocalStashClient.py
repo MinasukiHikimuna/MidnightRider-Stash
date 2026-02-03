@@ -7,7 +7,7 @@ from stashapi.stashapp import StashInterface
 
 from constants import DEFAULT_IMAGE_FORMAT
 from graphql_queries import PERFORMER_FRAGMENT, SCENE_FRAGMENT
-from types import Performer, Scene, ServerConnection, Tag
+from stash_types import Performer, Scene, ServerConnection, Tag
 
 
 class LocalStashClient:

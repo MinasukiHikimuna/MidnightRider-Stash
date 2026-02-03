@@ -3,7 +3,7 @@ from typing import Any
 from stashapi.stashapp import StashInterface
 
 from graphql_queries import PERFORMER_FRAGMENT, SCENE_FRAGMENT
-from types import Performer, Scene, Studio, Tag
+from stash_types import Performer, Scene, Studio, Tag
 
 
 class MissingStashClient:
