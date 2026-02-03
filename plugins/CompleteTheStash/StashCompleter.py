@@ -335,38 +335,16 @@ class StashCompleter:
                     if not any(tag["name"] in exclude_tags for tag in scene["tags"]):
                         filtered_stashbox_scenes.append(scene)
 
-        # Create a set of stashbox scene IDs for quick lookup
+        # Create sets for quick lookup
         stashbox_scene_ids = {scene["id"] for scene in filtered_stashbox_scenes}
+        local_scene_stash_ids = {
+            sid["stash_id"]
+            for local_scene in local_scenes
+            for sid in local_scene["stash_ids"]
+            if sid.get("endpoint") == self.config.get("stashboxEndpoint")
+        }
 
         destroyed_scenes_stash_ids = []
-        for local_scene in local_scenes:
-            scene_stash_id = next(
-                (
-                    sid["stash_id"]
-                    for sid in local_scene["stash_ids"]
-                    if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-                ),
-                None,
-            )
-            for existing_missing_scene in existing_missing_scenes:
-                existing_missing_scene_stash_id = next(
-                    (
-                        sid["stash_id"]
-                        for sid in existing_missing_scene["stash_ids"]
-                        if sid.get("endpoint") == self.config.get("stashboxEndpoint")
-                    ),
-                    None,
-                )
-                if scene_stash_id == existing_missing_scene_stash_id:
-                    self.missing_stash_client.destroy_scene(
-                        existing_missing_scene["id"]
-                    )
-                    destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
-                    self.logger.info(
-                        f"Scene {existing_missing_scene['title']} (ID: {existing_missing_scene['id']}) destroyed."
-                    )
-
-        # Destroy existing missing scenes that are not in stashdb_scenes
         for existing_missing_scene in existing_missing_scenes:
             existing_missing_scene_stash_id = next(
                 (
@@ -376,7 +354,16 @@ class StashCompleter:
                 ),
                 None,
             )
-            if existing_missing_scene_stash_id not in stashbox_scene_ids:
+
+            # Destroy if scene exists in local stash
+            if existing_missing_scene_stash_id in local_scene_stash_ids:
+                self.missing_stash_client.destroy_scene(existing_missing_scene["id"])
+                destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
+                self.logger.info(
+                    f"Scene {existing_missing_scene['title']} (ID: {existing_missing_scene['id']}) destroyed."
+                )
+            # Destroy if scene no longer exists in stashbox
+            elif existing_missing_scene_stash_id not in stashbox_scene_ids:
                 self.missing_stash_client.destroy_scene(existing_missing_scene["id"])
                 destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
                 self.logger.info(
