@@ -424,10 +424,21 @@
 
     var cancelBtn = document.createElement("button");
     cancelBtn.className = "pts-toolbar-btn pts-toolbar-cancel";
+    cancelBtn.id = "pts-cancel-btn";
     cancelBtn.textContent = "Cancel";
     cancelBtn.addEventListener("click", function () {
       var btn = document.getElementById(BUTTON_ID);
       if (btn) deactivate(btn);
+    });
+
+    var backBtn = document.createElement("button");
+    backBtn.className = "pts-toolbar-btn";
+    backBtn.id = "pts-back-btn";
+    backBtn.textContent = "Back";
+    backBtn.style.display = "none";
+    backBtn.addEventListener("click", function () {
+      var btn = document.getElementById(BUTTON_ID);
+      if (btn) returnToCropMode(btn);
     });
 
     var confirmBtn = document.createElement("button");
@@ -440,6 +451,7 @@
     });
 
     actionGroup.appendChild(cancelBtn);
+    actionGroup.appendChild(backBtn);
     actionGroup.appendChild(confirmBtn);
 
     toolbarEl.appendChild(timeGroup);
@@ -454,14 +466,17 @@
     if (!toolbarEl) return;
     toolbarEl.style.display = "flex";
     var confirmBtn = document.getElementById("pts-confirm-btn");
+    var backBtn = document.getElementById("pts-back-btn");
     var timeGroup = document.getElementById("pts-time-group");
     if (mode === "crop") {
       toolbarStatusEl.textContent = "Drag to position, resize corners to crop";
       if (confirmBtn) { confirmBtn.textContent = "Confirm Crop"; confirmBtn.style.display = ""; }
+      if (backBtn) backBtn.style.display = "none";
       if (timeGroup) timeGroup.style.display = "";
     } else if (mode === "pick") {
       toolbarStatusEl.textContent = "Tap a tag below to set its preview";
       if (confirmBtn) confirmBtn.style.display = "none";
+      if (backBtn) backBtn.style.display = "";
       if (timeGroup) timeGroup.style.display = "none";
     }
   }
@@ -517,6 +532,15 @@
     if (detailsTab && detailsTab.getAttribute("aria-selected") === "false") {
       detailsTab.click();
     }
+  }
+
+  function returnToCropMode(btn) {
+    // Reactivate the crop overlay and return to crop mode
+    overlayContainer.classList.add("pts-active");
+    state.picking = false;
+    document.body.classList.remove("pts-pick-mode");
+    setBtnState(btn, "CROP", "#0f0");
+    showToolbar("crop");
   }
 
   function deactivate(btn) {
