@@ -27,7 +27,7 @@ class MissingStashClient:
     def destroy_scene(self, scene_id: int) -> None:
         scene = self.missing_stash.find_scene(scene_id, fragment="id")
         if scene:
-            return self.missing_stash.destroy_scene(scene_id)
+            self.missing_stash.destroy_scene(scene_id)
 
     def find_performer(self, performer_id: int) -> dict:
         create = False

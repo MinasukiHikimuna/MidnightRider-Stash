@@ -53,7 +53,7 @@ def check_stash_instances_are_unique(local_configuration, missing_configuration)
 
 def get_json_input():
     if os.getenv("ENABLE_DEV_MODE"):
-        import dotenv
+        import dotenv  # noqa: PLC0415
         dotenv.load_dotenv()
 
         fake_input = os.getenv("FAKE_INPUT")
