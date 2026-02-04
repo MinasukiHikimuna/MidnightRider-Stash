@@ -1,6 +1,8 @@
 import json
+import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 import urllib.error
@@ -517,13 +519,21 @@ def local_stash_instance(stash_network, stashbox_instance):
     port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
     wait_for_stash_ready(host, port, api_key=local_stash_api_key)
 
-    yield StashInterface({
+    interface = StashInterface({
         "scheme": "http",
         "host": host,
         "port": port,
         "logger": log,
         "ApiKey": local_stash_api_key,
     })
+
+    # Store connection info as attributes for direct plugin execution tests
+    interface._test_scheme = "http"
+    interface._test_host = host
+    interface._test_port = port
+    interface._test_api_key = local_stash_api_key
+
+    yield interface
 
     container.stop()
 
@@ -559,13 +569,21 @@ def missing_stash_instance(stash_network, stashbox_instance):
     port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
     wait_for_stash_ready(host, port, api_key=missing_stash_api_key)
 
-    yield StashInterface({
+    interface = StashInterface({
         "scheme": "http",
         "host": host,
         "port": port,
         "apikey": missing_stash_api_key,
         "logger": log,
     })
+
+    # Store connection info as attributes for direct plugin execution tests
+    interface._test_scheme = "http"
+    interface._test_host = host
+    interface._test_port = port
+    interface._test_api_key = missing_stash_api_key
+
+    yield interface
 
     container.stop()
 
@@ -848,6 +866,121 @@ def test_e2e_compilation_exclusion(
 
     # Verify compilation scene was NOT created
     verify_scene_not_exists(missing_stash_instance, compilation_scene)
+
+
+def test_direct_plugin_execution(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test running plugin code directly (not in container) for coverage/debugging.
+
+    This test imports and runs the plugin code in-process, allowing for:
+    - Code coverage collection
+    - Debugger attachment
+    - Direct error inspection
+    """
+    # Add plugin directory to path so we can import the modules
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    # Import plugin modules
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    # Set up test data in stashbox
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    # For direct execution, use EXTERNAL endpoint since plugin runs outside containers
+    external_endpoint = stashbox_instance["endpoint"]
+
+    performer = PerformerBuilder("Ember Rose", "FEMALE")
+    studio_id = stashbox.create_studio("Direct Execution Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    scene1 = (SceneBuilder("First Scene", "2024-01-15")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
+    scene2 = (SceneBuilder("Second Scene", "2024-02-20")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
+
+    stashbox.create_scene(scene1)
+    stashbox.create_scene(scene2)
+    scene1.stash_endpoint = external_endpoint
+    scene2.stash_endpoint = external_endpoint
+
+    # Create performer in local stash with Completionist tag
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Now run the plugin code directly instead of via run_plugin_task
+    # Set STASHDB_ENDPOINT to external endpoint for direct execution
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    # Create plugin clients using connection info stored in fixture
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,  # External endpoint for direct execution
+        log,
+    )
+
+    # Create stashbox client using EXTERNAL endpoint since we're running outside containers
+    # The plugin will use this endpoint to query stashbox
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],  # External endpoint like http://localhost:port/graphql
+        stashbox_instance["api_key"],
+    )
+
+    # Create StashCompleter with configuration
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,  # External endpoint for direct execution
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(
+        config,
+        log,
+        stashbox_client,
+        local_client,
+        missing_client,
+    )
+
+    # Run the plugin logic directly
+    completer.process_performers()
+
+    # Verify results
+    missing_performer = missing_stash_instance.find_performer(performer.name)
+    assert missing_performer is not None
+    assert missing_performer["name"] == performer.name
+
+    verify_scene_exists(missing_stash_instance, scene1)
+    verify_scene_exists(missing_stash_instance, scene2)
 
 
 if __name__ == "__main__":
