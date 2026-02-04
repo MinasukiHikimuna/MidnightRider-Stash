@@ -17,6 +17,104 @@ STASHBOX_INTERNAL_PORT = 9998
 POSTGRES_IMAGE = "postgres:17.2"
 
 
+class PerformerBuilder:
+    """Builder for test performer data."""
+
+    def __init__(self, name, gender="FEMALE"):
+        self.name = name
+        self.gender = gender
+        self.stashbox_id = None
+        self.stash_endpoint = None
+
+    def with_stashbox_id(self, stashbox_id, endpoint):
+        """Set the stashbox ID after seeding."""
+        self.stashbox_id = stashbox_id
+        self.stash_endpoint = endpoint
+        return self
+
+    def for_stashbox_create(self):
+        """Get input for StashBoxClient.create_performer()."""
+        return {
+            "name": self.name,
+            "gender": self.gender,
+        }
+
+    def for_stash_create(self, tag_ids=None):
+        """Get input for StashInterface.create_performer()."""
+        data = {
+            "name": self.name,
+            "gender": self.gender,
+        }
+        if self.stashbox_id and self.stash_endpoint:
+            data["stash_ids"] = [{
+                "stash_id": self.stashbox_id,
+                "endpoint": self.stash_endpoint,
+            }]
+        if tag_ids:
+            data["tag_ids"] = tag_ids
+        return data
+
+
+class SceneBuilder:
+    """Builder for test scene data."""
+
+    def __init__(self, title, date):
+        self.title = title
+        self.date = date
+        self.stashbox_id = None
+        self.stash_endpoint = None
+        self.performer_ids = []
+        self.studio_id = None
+        self.tag_ids = []
+
+    def with_stashbox_id(self, stashbox_id, endpoint):
+        """Set the stashbox ID after seeding."""
+        self.stashbox_id = stashbox_id
+        self.stash_endpoint = endpoint
+        return self
+
+    def with_performers(self, *performer_ids):
+        """Add performer IDs for stashbox creation."""
+        self.performer_ids = list(performer_ids)
+        return self
+
+    def with_studio(self, studio_id):
+        """Add studio ID for stashbox creation."""
+        self.studio_id = studio_id
+        return self
+
+    def with_tags(self, *tag_ids):
+        """Add tag IDs for stashbox creation."""
+        self.tag_ids = list(tag_ids)
+        return self
+
+    def for_stashbox_create(self):
+        """Get input for StashBoxClient.create_scene()."""
+        return {
+            "title": self.title,
+            "date": self.date,
+            "performer_ids": self.performer_ids if self.performer_ids else None,
+            "studio_id": self.studio_id,
+            "tag_ids": self.tag_ids if self.tag_ids else None,
+        }
+
+    def for_stash_create(self, performer_ids=None):
+        """Get input for StashInterface.create_scene().
+
+        Args:
+            performer_ids: Optional list of local stash performer IDs (not stashbox IDs)
+        """
+        data = {"title": self.title}
+        if self.stashbox_id and self.stash_endpoint:
+            data["stash_ids"] = [{
+                "stash_id": self.stashbox_id,
+                "endpoint": self.stash_endpoint,
+            }]
+        if performer_ids:
+            data["performer_ids"] = performer_ids
+        return data
+
+
 class StashBoxClient:
     """GraphQL client for seeding test data in stash-box."""
 
@@ -61,8 +159,17 @@ class StashBoxClient:
         data = self._execute_query(query, variables)
         return data["tagCreate"]["id"]
 
-    def create_performer(self, name, gender="FEMALE"):
-        """Create a performer and return its ID."""
+    def create_performer(self, performer):
+        """Create a performer from a PerformerBuilder and return its ID.
+
+        Also updates the builder with the stashbox ID and endpoint.
+        """
+        if isinstance(performer, PerformerBuilder):
+            input_data = performer.for_stashbox_create()
+        else:
+            # Support dict input for backward compatibility
+            input_data = performer
+
         query = """
         mutation CreatePerformer($input: PerformerCreateInput!) {
             performerCreate(input: $input) {
@@ -72,9 +179,15 @@ class StashBoxClient:
             }
         }
         """
-        variables = {"input": {"name": name, "gender": gender}}
+        variables = {"input": input_data}
         data = self._execute_query(query, variables)
-        return data["performerCreate"]["id"]
+        performer_id = data["performerCreate"]["id"]
+
+        # Update builder with stashbox ID
+        if isinstance(performer, PerformerBuilder):
+            performer.with_stashbox_id(performer_id, self.endpoint)
+
+        return performer_id
 
     def create_studio(self, name, parent_id=None):
         """Create a studio and return its ID."""
@@ -92,8 +205,17 @@ class StashBoxClient:
         data = self._execute_query(query, variables)
         return data["studioCreate"]["id"]
 
-    def create_scene(self, title, date, performer_ids=None, studio_id=None, tag_ids=None):
-        """Create a scene and return its ID."""
+    def create_scene(self, scene):
+        """Create a scene from a SceneBuilder and return its ID.
+
+        Also updates the builder with the stashbox ID and endpoint.
+        """
+        if isinstance(scene, SceneBuilder):
+            input_data = scene.for_stashbox_create()
+        else:
+            # Support dict input for backward compatibility
+            input_data = scene
+
         query = """
         mutation CreateScene($input: SceneCreateInput!) {
             sceneCreate(input: $input) {
@@ -105,22 +227,28 @@ class StashBoxClient:
         """
         variables = {
             "input": {
-                "title": title,
-                "date": date,
+                "title": input_data["title"],
+                "date": input_data["date"],
                 "fingerprints": [],  # Required field
             }
         }
-        if performer_ids:
+        if input_data.get("performer_ids"):
             variables["input"]["performers"] = [
-                {"performer_id": pid} for pid in performer_ids
+                {"performer_id": pid} for pid in input_data["performer_ids"]
             ]
-        if studio_id:
-            variables["input"]["studio_id"] = studio_id
-        if tag_ids:
-            variables["input"]["tag_ids"] = tag_ids
+        if input_data.get("studio_id"):
+            variables["input"]["studio_id"] = input_data["studio_id"]
+        if input_data.get("tag_ids"):
+            variables["input"]["tag_ids"] = input_data["tag_ids"]
 
         data = self._execute_query(query, variables)
-        return data["sceneCreate"]["id"]
+        scene_id = data["sceneCreate"]["id"]
+
+        # Update builder with stashbox ID
+        if isinstance(scene, SceneBuilder):
+            scene.with_stashbox_id(scene_id, self.endpoint)
+
+        return scene_id
 
     def query_scenes(self):
         """Query all scenes."""
@@ -290,52 +418,53 @@ def test_stashbox_basic_query(stashbox_instance):
 
 
 def test_stashbox_seed_and_query(stashbox_instance):
-    """Test that we can seed data and query it back."""
-    client = StashBoxClient(
+    """Test that we can seed data and query it back using builders."""
+    stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
     )
 
-    # Create test data
-    tag_id = client.create_tag("Compilation")
-    performer_id = client.create_performer("Luna Starling", "FEMALE")
-    parent_studio_id = client.create_studio("Parent Network")
-    studio_id = client.create_studio("Test Studio", parent_id=parent_studio_id)
+    # Build test data
+    tag_id = stashbox.create_tag("Compilation")
+    performer = PerformerBuilder("Luna Starling", "FEMALE")
+    parent_studio_id = stashbox.create_studio("Parent Network")
+    studio_id = stashbox.create_studio("Test Studio", parent_id=parent_studio_id)
 
-    # Create scenes
-    client.create_scene(
-        title="Quality Work",
-        date="2024-01-15",
-        performer_ids=[performer_id],
-        studio_id=studio_id
-    )
-    client.create_scene(
-        title="Teamwork Vol 2",
-        date="2024-04-05",
-        performer_ids=[performer_id],
-        studio_id=studio_id,
-        tag_ids=[tag_id]
-    )
+    # Seed performer to stashbox (updates builder with ID automatically)
+    stashbox.create_performer(performer)
+
+    # Build scenes
+    quality_work = (SceneBuilder("Quality Work", "2024-01-15")
+                    .with_performers(performer.stashbox_id)
+                    .with_studio(studio_id))
+    teamwork_vol_2 = (SceneBuilder("Teamwork Vol 2", "2024-04-05")
+                      .with_performers(performer.stashbox_id)
+                      .with_studio(studio_id)
+                      .with_tags(tag_id))
+
+    # Seed scenes to stashbox (updates builders with IDs automatically)
+    stashbox.create_scene(quality_work)
+    stashbox.create_scene(teamwork_vol_2)
 
     # Query scenes back
-    scenes = client.query_scenes()
+    scenes = stashbox.query_scenes()
     assert len(scenes) == 2
 
-    # Verify scene data
+    # Verify scene data using builders
     scene_titles = {s["title"] for s in scenes}
-    assert "Quality Work" in scene_titles
-    assert "Teamwork Vol 2" in scene_titles
+    assert quality_work.title in scene_titles
+    assert teamwork_vol_2.title in scene_titles
 
     # Verify scene has performer
-    quality_work = next(s for s in scenes if s["title"] == "Quality Work")
-    assert len(quality_work["performers"]) == 1
-    assert quality_work["performers"][0]["performer"]["name"] == "Luna Starling"
-    assert quality_work["studio"]["name"] == "Test Studio"
+    quality_work_data = next(s for s in scenes if s["title"] == quality_work.title)
+    assert len(quality_work_data["performers"]) == 1
+    assert quality_work_data["performers"][0]["performer"]["name"] == performer.name
+    assert quality_work_data["studio"]["name"] == "Test Studio"
 
     # Verify compilation tag
-    teamwork = next(s for s in scenes if s["title"] == "Teamwork Vol 2")
-    assert len(teamwork["tags"]) == 1
-    assert teamwork["tags"][0]["name"] == "Compilation"
+    teamwork_data = next(s for s in scenes if s["title"] == teamwork_vol_2.title)
+    assert len(teamwork_data["tags"]) == 1
+    assert teamwork_data["tags"][0]["name"] == "Compilation"
 
 
 if __name__ == "__main__":

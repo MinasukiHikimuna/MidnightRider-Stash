@@ -13,7 +13,7 @@ from StashDbClient import StashDbClient
 from TpdbClient import TpdbClient
 
 
-STASHDB_ENDPOINT = "https://stashdb.org/graphql"
+STASHDB_ENDPOINT = os.environ.get("STASHDB_ENDPOINT", "https://stashdb.org/graphql")
 TPDB_ENDPOINT = "https://theporndb.net/graphql"
 
 
