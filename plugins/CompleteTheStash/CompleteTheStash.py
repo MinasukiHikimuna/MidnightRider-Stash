@@ -18,18 +18,18 @@ TPDB_ENDPOINT = "https://theporndb.net/graphql"
 
 @dataclass
 class MissingSceneSource:
-    stashappAddress: str
-    stashappApiKey: str
-    stashboxEndpoint: str
+    stashapp_address: str
+    stashapp_api_key: str
+    stashbox_endpoint: str
 
 
 @dataclass
 class CompleteTheStashConfiguration:
-    performerTags: str
-    sceneExcludeTags: str
-    stashDbSceneSource: MissingSceneSource
-    tpdbSceneSource: MissingSceneSource
-    enableSceneHooks: bool
+    performer_tags: str
+    scene_exclude_tags: str
+    stashdb_scene_source: MissingSceneSource
+    tpdb_scene_source: MissingSceneSource
+    enable_scene_hooks: bool
 
 
 def parse_url(url):
@@ -66,7 +66,7 @@ def get_json_input():
 def get_matching_stashbox_config(
     local_configuration, missing_scene_source: MissingSceneSource
 ):
-    stashbox_endpoint = missing_scene_source.stashboxEndpoint
+    stashbox_endpoint = missing_scene_source.stashbox_endpoint
     stash_boxes = local_configuration.get("general", {}).get("stashBoxes")
     if not stash_boxes:
         raise ValueError("No stash boxes are configured.")
@@ -133,9 +133,9 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         "missingStashAddress"
     ) and complete_the_stash_config.get("missingStashApiKey"):
         stash_db_configuration = MissingSceneSource(
-            stashappAddress=complete_the_stash_config.get("missingStashAddress"),
-            stashappApiKey=complete_the_stash_config.get("missingStashApiKey"),
-            stashboxEndpoint=STASHDB_ENDPOINT,
+            stashapp_address=complete_the_stash_config.get("missingStashAddress"),
+            stashapp_api_key=complete_the_stash_config.get("missingStashApiKey"),
+            stashbox_endpoint=STASHDB_ENDPOINT,
         )
 
     tpdb_configuration = None
@@ -143,28 +143,28 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         "missingStashTpdbAddress"
     ) and complete_the_stash_config.get("missingStashTpdbApiKey"):
         tpdb_configuration = MissingSceneSource(
-            stashappAddress=complete_the_stash_config.get("missingStashTpdbAddress"),
-            stashappApiKey=complete_the_stash_config.get("missingStashTpdbApiKey"),
-            stashboxEndpoint=TPDB_ENDPOINT,
+            stashapp_address=complete_the_stash_config.get("missingStashTpdbAddress"),
+            stashapp_api_key=complete_the_stash_config.get("missingStashTpdbApiKey"),
+            stashbox_endpoint=TPDB_ENDPOINT,
         )
 
     return CompleteTheStashConfiguration(
-        performerTags=performer_tags,
-        sceneExcludeTags=scene_exclude_tags,
-        stashDbSceneSource=stash_db_configuration,
-        tpdbSceneSource=tpdb_configuration,
-        enableSceneHooks=complete_the_stash_config.get("enableSceneHooks", False),
+        performer_tags=performer_tags,
+        scene_exclude_tags=scene_exclude_tags,
+        stashdb_scene_source=stash_db_configuration,
+        tpdb_scene_source=tpdb_configuration,
+        enable_scene_hooks=complete_the_stash_config.get("enableSceneHooks", False),
     )
 
 
-def create_missing_stash_client(missingSceneSource: MissingSceneSource):
-    scheme, host, port = parse_url(missingSceneSource.stashappAddress)
+def create_missing_stash_client(missing_scene_source: MissingSceneSource):
+    scheme, host, port = parse_url(missing_scene_source.stashapp_address)
     return MissingStashClient(
         scheme,
         host,
         port,
-        missingSceneSource.stashappApiKey,
-        missingSceneSource.stashboxEndpoint,
+        missing_scene_source.stashapp_api_key,
+        missing_scene_source.stashbox_endpoint,
         logger,
     )
 
@@ -205,20 +205,20 @@ def execute():
 
     # Stop processing as soon as possible to improve performance if scene hooks are disabled.
     event_type = json_input.get("args", {}).get("hookContext", {}).get("type")
-    if event_type in ["Scene.Create.Post", "Scene.Update.Post"] and not complete_the_stash_config.enableSceneHooks:
+    if event_type in ["Scene.Create.Post", "Scene.Update.Post"] and not complete_the_stash_config.enable_scene_hooks:
         return
 
     # StashDB
-    if complete_the_stash_config.stashDbSceneSource:
+    if complete_the_stash_config.stashdb_scene_source:
         missing_stash_client = create_missing_stash_client(
-            complete_the_stash_config.stashDbSceneSource
+            complete_the_stash_config.stashdb_scene_source
         )
         missing_configuration = missing_stash_client.get_configuration()
 
         check_stash_instances_are_unique(local_configuration, missing_configuration)
 
         stashbox_config = get_matching_stashbox_config(
-            local_configuration, complete_the_stash_config.stashDbSceneSource
+            local_configuration, complete_the_stash_config.stashdb_scene_source
         )
         stashbox_client = StashDbClient(
             stashbox_config["endpoint"],
@@ -226,10 +226,10 @@ def execute():
         )
 
         config = {
-            "performerTags": complete_the_stash_config.performerTags,
-            "stashboxEndpoint": complete_the_stash_config.stashDbSceneSource.stashboxEndpoint,
-            "sceneExcludeTags": complete_the_stash_config.sceneExcludeTags,
-            "enableSceneHooks": complete_the_stash_config.enableSceneHooks,
+            "performerTags": complete_the_stash_config.performer_tags,
+            "stashboxEndpoint": complete_the_stash_config.stashdb_scene_source.stashboxEndpoint,
+            "sceneExcludeTags": complete_the_stash_config.scene_exclude_tags,
+            "enableSceneHooks": complete_the_stash_config.enable_scene_hooks,
         }
         stash_completer = StashCompleter(
             config,
@@ -241,16 +241,16 @@ def execute():
         process_input(json_input, stash_completer)
 
     # TPDB
-    if complete_the_stash_config.tpdbSceneSource:
+    if complete_the_stash_config.tpdb_scene_source:
         missing_stash_client = create_missing_stash_client(
-            complete_the_stash_config.tpdbSceneSource
+            complete_the_stash_config.tpdb_scene_source
         )
         missing_configuration = missing_stash_client.get_configuration()
 
         check_stash_instances_are_unique(local_configuration, missing_configuration)
 
         stashbox_config = get_matching_stashbox_config(
-            local_configuration, complete_the_stash_config.tpdbSceneSource
+            local_configuration, complete_the_stash_config.tpdb_scene_source
         )
         stashbox_client = TpdbClient(
             stashbox_config["endpoint"],
@@ -258,10 +258,10 @@ def execute():
         )
 
         config = {
-            "performerTags": complete_the_stash_config.performerTags,
-            "stashboxEndpoint": complete_the_stash_config.tpdbSceneSource.stashboxEndpoint,
-            "sceneExcludeTags": complete_the_stash_config.sceneExcludeTags,
-            "enableSceneHooks": complete_the_stash_config.enableSceneHooks,
+            "performerTags": complete_the_stash_config.performer_tags,
+            "stashboxEndpoint": complete_the_stash_config.tpdb_scene_source.stashboxEndpoint,
+            "sceneExcludeTags": complete_the_stash_config.scene_exclude_tags,
+            "enableSceneHooks": complete_the_stash_config.enable_scene_hooks,
         }
         stash_completer = StashCompleter(
             config,
