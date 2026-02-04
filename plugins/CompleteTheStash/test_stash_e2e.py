@@ -685,9 +685,9 @@ def assert_scene(matched_scenes, expected_scene):
 
     matched_scene = matched_scenes[0]
     assert matched_scene.get("title").upper() == expected_scene.get("title").upper()
-    assert set(
-        [stash_id.get("stash_id") for stash_id in matched_scene.get("stash_ids")]
-    ) == set([stash_id.get("stash_id") for stash_id in expected_scene.get("stash_ids")])
+    assert {
+        stash_id.get("stash_id") for stash_id in matched_scene.get("stash_ids")
+    } == {stash_id.get("stash_id") for stash_id in expected_scene.get("stash_ids")}
 
 
 def assert_scene_does_not_exist(stash_instance, stash_id, endpoint):
@@ -704,9 +704,9 @@ def assert_scene_does_not_exist(stash_instance, stash_id, endpoint):
 
 
 def assert_scene_performers(scene, expected_performers):
-    assert set([performer.get("id") for performer in scene.get("performers")]) == set(
-        [expected_performer.get("id") for expected_performer in expected_performers]
-    )
+    assert {performer.get("id") for performer in scene.get("performers")} == {
+        expected_performer.get("id") for expected_performer in expected_performers
+    }
 
 
 if __name__ == "__main__":
