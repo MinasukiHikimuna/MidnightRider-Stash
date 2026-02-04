@@ -1,0 +1,24 @@
+[project]
+name = "midnightrider-stash"
+version = "0.1.0"
+description = "MidnightRider Stash plugin collection"
+requires-python = ">=3.14"
+dependencies = [
+    "requests",
+    "stashapp-tools>=0.2.50",
+    "xxhash",
+]
+
+[dependency-groups]
+dev = [
+    "pandas",
+    "pytest",
+    "python-dotenv",
+    "pyyaml",
+    "ruff>=0.14.3",
+    "testcontainers",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
