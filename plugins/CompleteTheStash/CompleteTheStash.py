@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlparse
 
 import stashapi.log as logger
@@ -274,7 +275,7 @@ def execute():
 
 
 if __name__ == "__main__":
-    script_dir = os.path.dirname(os.path.realpath(__file__))
+    script_dir = str(Path(__file__).resolve().parent)
     sys.path.append(script_dir)
 
     execute()

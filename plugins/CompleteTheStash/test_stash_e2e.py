@@ -5,6 +5,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 import yaml
@@ -67,17 +68,16 @@ def wait_for_stash_ready(port, api_key=None, timeout=60, poll_interval=0.5):
 
 
 def copy_files_to_plugin_directory(source_dir, target_dir, excluded_files):
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
+    target_path = Path(target_dir)
+    target_path.mkdir(parents=True, exist_ok=True)
 
     files_copied = []
 
-    for filename in os.listdir(source_dir):
-        if filename not in excluded_files and not filename.startswith("test_"):
-            source_file = os.path.join(source_dir, filename)
-            if os.path.isfile(source_file):
-                shutil.copy(source_file, target_dir)
-                files_copied.append(filename)
+    for entry in Path(source_dir).iterdir():
+        if entry.name not in excluded_files and not entry.name.startswith("test_"):
+            if entry.is_file():
+                shutil.copy(entry, target_dir)
+                files_copied.append(entry.name)
 
     return files_copied
 
@@ -96,7 +96,7 @@ def create_manifest_file(target_dir, files_copied):
         "files": files_copied,
     }
 
-    with open(os.path.join(target_dir, "manifest.yml"), "w") as file:
+    with (Path(target_dir) / "manifest.yml").open("w") as file:
         yaml.safe_dump(manifest_content, file)
 
 
@@ -138,18 +138,18 @@ class SceneBuilder:
 
 @pytest.fixture(scope="module")
 def local_stash_instance_stashdb():
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    template_dir = os.path.join(test_dir, ".template-stash")
-    local_working_dir = os.path.join(test_dir, ".local-stashdb-stash")
-    plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
+    test_dir = Path(__file__).resolve().parent
+    template_dir = test_dir / ".template-stash"
+    local_working_dir = test_dir / ".local-stashdb-stash"
+    plugin_dir = local_working_dir / "plugins" / "CompleteTheStash"
     executable_path = os.getenv("STASH_BIN")
-    local_config_path = os.path.join(template_dir, "local-config.txt")
+    local_config_path = template_dir / "local-config.txt"
 
-    if os.path.exists(local_working_dir):
+    if local_working_dir.exists():
         shutil.rmtree(local_working_dir)
-    os.makedirs(local_working_dir, exist_ok=True)
+    local_working_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(local_config_path) as file:
+    with local_config_path.open() as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_stashdb_api_key
     local_config["port"] = local_stashdb_port
@@ -175,7 +175,7 @@ def local_stash_instance_stashdb():
         "missingStashApiKey"
     ] = missing_stashdb_api_key
 
-    with open(os.path.join(local_working_dir, "config.yml"), "w") as file:
+    with (local_working_dir / "config.yml").open("w") as file:
         yaml.safe_dump(local_config, file)
 
     excluded_files = {".gitignore"}
@@ -200,18 +200,18 @@ def local_stash_instance_stashdb():
 
 @pytest.fixture(scope="module")
 def local_stash_instance_tpdb():
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    template_dir = os.path.join(test_dir, ".template-stash")
-    local_working_dir = os.path.join(test_dir, ".local-tpdb-stash")
-    plugin_dir = os.path.join(local_working_dir, "plugins", "CompleteTheStash")
+    test_dir = Path(__file__).resolve().parent
+    template_dir = test_dir / ".template-stash"
+    local_working_dir = test_dir / ".local-tpdb-stash"
+    plugin_dir = local_working_dir / "plugins" / "CompleteTheStash"
     executable_path = os.getenv("STASH_BIN")
-    local_config_path = os.path.join(template_dir, "local-config.txt")
+    local_config_path = template_dir / "local-config.txt"
 
-    if os.path.exists(local_working_dir):
+    if local_working_dir.exists():
         shutil.rmtree(local_working_dir)
-    os.makedirs(local_working_dir, exist_ok=True)
+    local_working_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(local_config_path) as file:
+    with local_config_path.open() as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_tpdb_api_key
     local_config["port"] = local_tpdb_port
@@ -237,7 +237,7 @@ def local_stash_instance_tpdb():
         "missingStashTpdbApiKey"
     ] = missing_tpdb_api_key
 
-    with open(os.path.join(local_working_dir, "config.yml"), "w") as file:
+    with (local_working_dir / "config.yml").open("w") as file:
         yaml.safe_dump(local_config, file)
 
     excluded_files = {".gitignore"}
@@ -262,21 +262,21 @@ def local_stash_instance_tpdb():
 
 @pytest.fixture(scope="module")
 def missing_stash_instance_stashdb():
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    template_dir = os.path.join(test_dir, ".template-stash")
-    missing_working_dir = os.path.join(test_dir, ".missing-stashdb-stash")
+    test_dir = Path(__file__).resolve().parent
+    template_dir = test_dir / ".template-stash"
+    missing_working_dir = test_dir / ".missing-stashdb-stash"
     executable_path = os.getenv("STASH_BIN")
-    missing_config_path = os.path.join(template_dir, "missing-stashdb-config.txt")
+    missing_config_path = template_dir / "missing-stashdb-config.txt"
 
-    if os.path.exists(missing_working_dir):
+    if missing_working_dir.exists():
         shutil.rmtree(missing_working_dir)
-    os.makedirs(missing_working_dir, exist_ok=True)
+    missing_working_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(missing_config_path) as file:
+    with missing_config_path.open() as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_stashdb_api_key
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("STASHDB_API_KEY")
-    with open(os.path.join(missing_working_dir, "config.yml"), "w") as file:
+    with (missing_working_dir / "config.yml").open("w") as file:
         yaml.safe_dump(missing_config, file)
 
     stash_process = start_stash_process(executable_path, missing_working_dir)
@@ -297,21 +297,21 @@ def missing_stash_instance_stashdb():
 
 @pytest.fixture(scope="module")
 def missing_stash_instance_tpdb():
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    template_dir = os.path.join(test_dir, ".template-stash")
-    missing_working_dir = os.path.join(test_dir, ".missing-tpdb-stash")
+    test_dir = Path(__file__).resolve().parent
+    template_dir = test_dir / ".template-stash"
+    missing_working_dir = test_dir / ".missing-tpdb-stash"
     executable_path = os.getenv("STASH_BIN")
-    missing_config_path = os.path.join(template_dir, "missing-tpdb-config.txt")
+    missing_config_path = template_dir / "missing-tpdb-config.txt"
 
-    if os.path.exists(missing_working_dir):
+    if missing_working_dir.exists():
         shutil.rmtree(missing_working_dir)
-    os.makedirs(missing_working_dir, exist_ok=True)
+    missing_working_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(missing_config_path) as file:
+    with missing_config_path.open() as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_tpdb_api_key
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("TPDB_API_KEY")
-    with open(os.path.join(missing_working_dir, "config.yml"), "w") as file:
+    with (missing_working_dir / "config.yml").open("w") as file:
         yaml.safe_dump(missing_config, file)
 
     stash_process = start_stash_process(executable_path, missing_working_dir)
