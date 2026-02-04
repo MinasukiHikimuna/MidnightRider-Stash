@@ -46,8 +46,8 @@ def check_stash_instances_are_unique(local_configuration, missing_configuration)
     missing_api_key = missing_configuration.get("general", {}).get("apiKey")
     if local_api_key == missing_api_key:
         raise ValueError(
-            "Local and missing Stash instances have the same API key which indicates both local and missing Stash instances are the same. "
-            "Please create a different instance for missing Stash."
+            "Local and missing Stash instances have the same API key which indicates both local and missing "
+            "Stash instances are the same. Please create a different instance for missing Stash."
         )
 
 
@@ -228,7 +228,7 @@ def execute():
 
         config = {
             "performerTags": complete_the_stash_config.performer_tags,
-            "stashboxEndpoint": complete_the_stash_config.stashdb_scene_source.stashboxEndpoint,
+            "stashboxEndpoint": complete_the_stash_config.stashdb_scene_source.stashbox_endpoint,
             "sceneExcludeTags": complete_the_stash_config.scene_exclude_tags,
             "enableSceneHooks": complete_the_stash_config.enable_scene_hooks,
         }
@@ -260,7 +260,7 @@ def execute():
 
         config = {
             "performerTags": complete_the_stash_config.performer_tags,
-            "stashboxEndpoint": complete_the_stash_config.tpdb_scene_source.stashboxEndpoint,
+            "stashboxEndpoint": complete_the_stash_config.tpdb_scene_source.stashbox_endpoint,
             "sceneExcludeTags": complete_the_stash_config.scene_exclude_tags,
             "enableSceneHooks": complete_the_stash_config.enable_scene_hooks,
         }
