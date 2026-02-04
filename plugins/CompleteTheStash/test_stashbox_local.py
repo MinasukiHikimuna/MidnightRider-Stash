@@ -756,12 +756,17 @@ def test_stashbox_seed_and_query(stashbox_instance):
     assert teamwork_data["tags"][0]["name"] == "Compilation"
 
 
-def test_e2e_basic_workflow(
+def test_smoke_in_container(
     stashbox_instance,
     local_stash_instance,
     missing_stash_instance,
 ):
-    """Test basic workflow: performer with scenes are created in missing stash."""
+    """Smoke test: verify plugin runs when installed in container.
+
+    This is a simple in-container test to verify the plugin can be installed
+    and executed in Stash. The same functionality is tested more thoroughly
+    by direct execution tests with better coverage/debugging.
+    """
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -770,15 +775,64 @@ def test_e2e_basic_workflow(
     # Use internal endpoint for stash_ids (what containers see)
     internal_endpoint = f"http://stashbox:{STASHBOX_INTERNAL_PORT}/graphql"
 
+    # Build minimal test data
+    performer = PerformerBuilder("Smoke Test Performer", "FEMALE")
+    studio_id = stashbox.create_studio("Smoke Test Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = internal_endpoint
+
+    scene = (SceneBuilder("Smoke Test Scene", "2024-01-15")
+             .with_performers(performer.stashbox_id)
+             .with_studio(studio_id))
+
+    stashbox.create_scene(scene)
+    scene.stash_endpoint = internal_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Run the plugin via container
+    job_id = local_stash_instance.run_plugin_task("CompleteTheStash", "Complete The Stash!")
+    local_stash_instance.wait_for_job(job_id, timeout=600)
+
+    # Basic verification - just check scene was created
+    verify_scene_exists(missing_stash_instance, scene)
+
+
+def test_basic_workflow(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test basic workflow: performer with scenes are created in missing stash."""
+    # Add plugin directory to path for imports
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
     # Build test data
     performer = PerformerBuilder("Jade Summers", "FEMALE")
     studio_id = stashbox.create_studio("Basic Workflow Studio")
 
-    # Seed performer to stashbox
     stashbox.create_performer(performer)
-    performer.stash_endpoint = internal_endpoint
+    performer.stash_endpoint = external_endpoint
 
-    # Build and seed scenes
     scene1 = (SceneBuilder("Morning Session", "2024-01-15")
               .with_performers(performer.stashbox_id)
               .with_studio(studio_id))
@@ -788,147 +842,19 @@ def test_e2e_basic_workflow(
 
     stashbox.create_scene(scene1)
     stashbox.create_scene(scene2)
-    scene1.stash_endpoint = internal_endpoint
-    scene2.stash_endpoint = internal_endpoint
-
-    # Create completionist tag and performer in local stash
-    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
-    local_stash_instance.create_performer({
-        **performer.for_stash_create(),
-        "tag_ids": [completionist_tag["id"]],
-    })
-
-    # Run the plugin
-    job_id = local_stash_instance.run_plugin_task("CompleteTheStash", "Complete The Stash!")
-    local_stash_instance.wait_for_job(job_id, timeout=600)
-
-    # Verify performer was created in missing stash
-    missing_performer = missing_stash_instance.find_performer(performer.name)
-    assert missing_performer is not None
-    assert missing_performer["name"] == performer.name
-    assert missing_performer["gender"] == performer.gender
-
-    # Verify scenes were created in missing stash
-    verify_scene_exists(missing_stash_instance, scene1)
-    verify_scene_exists(missing_stash_instance, scene2)
-
-
-def test_e2e_compilation_exclusion(
-    stashbox_instance,
-    local_stash_instance,
-    missing_stash_instance,
-):
-    """Test that scenes tagged with 'Compilation' are excluded."""
-    stashbox = StashBoxClient(
-        stashbox_instance["endpoint"],
-        stashbox_instance["api_key"]
-    )
-
-    # Use internal endpoint for stash_ids (what containers see)
-    internal_endpoint = f"http://stashbox:{STASHBOX_INTERNAL_PORT}/graphql"
-
-    # Build test data
-    compilation_tag_id = stashbox.create_tag("Compilation")
-    performer = PerformerBuilder("Ruby Valentine", "FEMALE")
-    studio_id = stashbox.create_studio("Compilation Test Studio")
-
-    # Seed performer to stashbox
-    stashbox.create_performer(performer)
-    performer.stash_endpoint = internal_endpoint
-
-    # Build and seed scenes - one regular, one compilation
-    regular_scene = (SceneBuilder("Regular Scene", "2024-01-15")
-                     .with_performers(performer.stashbox_id)
-                     .with_studio(studio_id))
-    compilation_scene = (SceneBuilder("Best Of Collection", "2024-02-20")
-                         .with_performers(performer.stashbox_id)
-                         .with_studio(studio_id)
-                         .with_tags(compilation_tag_id))
-
-    stashbox.create_scene(regular_scene)
-    stashbox.create_scene(compilation_scene)
-    regular_scene.stash_endpoint = internal_endpoint
-    compilation_scene.stash_endpoint = internal_endpoint
-
-    # Create completionist tag and performer in local stash
-    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
-    local_stash_instance.create_performer({
-        **performer.for_stash_create(),
-        "tag_ids": [completionist_tag["id"]],
-    })
-
-    # Run the plugin
-    job_id = local_stash_instance.run_plugin_task("CompleteTheStash", "Complete The Stash!")
-    local_stash_instance.wait_for_job(job_id, timeout=600)
-
-    # Verify regular scene was created
-    verify_scene_exists(missing_stash_instance, regular_scene)
-
-    # Verify compilation scene was NOT created
-    verify_scene_not_exists(missing_stash_instance, compilation_scene)
-
-
-def test_direct_plugin_execution(
-    stashbox_instance,
-    local_stash_instance,
-    missing_stash_instance,
-):
-    """Test running plugin code directly (not in container) for coverage/debugging.
-
-    This test imports and runs the plugin code in-process, allowing for:
-    - Code coverage collection
-    - Debugger attachment
-    - Direct error inspection
-    """
-    # Add plugin directory to path so we can import the modules
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    # Import plugin modules
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
-    # Set up test data in stashbox
-    stashbox = StashBoxClient(
-        stashbox_instance["endpoint"],
-        stashbox_instance["api_key"]
-    )
-    # For direct execution, use EXTERNAL endpoint since plugin runs outside containers
-    external_endpoint = stashbox_instance["endpoint"]
-
-    performer = PerformerBuilder("Ember Rose", "FEMALE")
-    studio_id = stashbox.create_studio("Direct Execution Studio")
-
-    stashbox.create_performer(performer)
-    performer.stash_endpoint = external_endpoint
-
-    scene1 = (SceneBuilder("First Scene", "2024-01-15")
-              .with_performers(performer.stashbox_id)
-              .with_studio(studio_id))
-    scene2 = (SceneBuilder("Second Scene", "2024-02-20")
-              .with_performers(performer.stashbox_id)
-              .with_studio(studio_id))
-
-    stashbox.create_scene(scene1)
-    stashbox.create_scene(scene2)
     scene1.stash_endpoint = external_endpoint
     scene2.stash_endpoint = external_endpoint
 
-    # Create performer in local stash with Completionist tag
+    # Create performer in local stash
     completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
     local_stash_instance.create_performer({
         **performer.for_stash_create(),
         "tag_ids": [completionist_tag["id"]],
     })
 
-    # Now run the plugin code directly instead of via run_plugin_task
-    # Set STASHDB_ENDPOINT to external endpoint for direct execution
+    # Run plugin directly
     os.environ["STASHDB_ENDPOINT"] = external_endpoint
 
-    # Create plugin clients using connection info stored in fixture
     local_client = LocalStashClient(
         {
             "Scheme": local_stash_instance._test_scheme,
@@ -944,43 +870,127 @@ def test_direct_plugin_execution(
         missing_stash_instance._test_host,
         missing_stash_instance._test_port,
         missing_stash_instance._test_api_key,
-        external_endpoint,  # External endpoint for direct execution
+        external_endpoint,
         log,
     )
 
-    # Create stashbox client using EXTERNAL endpoint since we're running outside containers
-    # The plugin will use this endpoint to query stashbox
     stashbox_client = StashDbClient(
-        stashbox_instance["endpoint"],  # External endpoint like http://localhost:port/graphql
+        stashbox_instance["endpoint"],
         stashbox_instance["api_key"],
     )
 
-    # Create StashCompleter with configuration
     config = {
         "performerTags": ["Completionist"],
-        "stashboxEndpoint": external_endpoint,  # External endpoint for direct execution
+        "stashboxEndpoint": external_endpoint,
         "sceneExcludeTags": ["Compilation"],
         "enableSceneHooks": False,
     }
 
-    completer = StashCompleter(
-        config,
-        log,
-        stashbox_client,
-        local_client,
-        missing_client,
-    )
-
-    # Run the plugin logic directly
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
     completer.process_performers()
 
     # Verify results
     missing_performer = missing_stash_instance.find_performer(performer.name)
     assert missing_performer is not None
     assert missing_performer["name"] == performer.name
+    assert missing_performer["gender"] == performer.gender
 
     verify_scene_exists(missing_stash_instance, scene1)
     verify_scene_exists(missing_stash_instance, scene2)
+
+
+def test_compilation_exclusion(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that scenes tagged with 'Compilation' are excluded."""
+    # Add plugin directory to path for imports
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data
+    compilation_tag_id = stashbox.create_tag("Compilation")
+    performer = PerformerBuilder("Ruby Valentine", "FEMALE")
+    studio_id = stashbox.create_studio("Compilation Test Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    regular_scene = (SceneBuilder("Regular Scene", "2024-01-15")
+                     .with_performers(performer.stashbox_id)
+                     .with_studio(studio_id))
+    compilation_scene = (SceneBuilder("Best Of Collection", "2024-02-20")
+                         .with_performers(performer.stashbox_id)
+                         .with_studio(studio_id)
+                         .with_tags(compilation_tag_id))
+
+    stashbox.create_scene(regular_scene)
+    stashbox.create_scene(compilation_scene)
+    regular_scene.stash_endpoint = external_endpoint
+    compilation_scene.stash_endpoint = external_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Run plugin directly
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+    completer.process_performers()
+
+    # Verify regular scene was created
+    verify_scene_exists(missing_stash_instance, regular_scene)
+
+    # Verify compilation scene was NOT created
+    verify_scene_not_exists(missing_stash_instance, compilation_scene)
 
 
 if __name__ == "__main__":
