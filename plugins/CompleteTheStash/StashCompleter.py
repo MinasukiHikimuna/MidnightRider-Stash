@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class StashCompleter:
 
         try:
             formatted_date = (
-                datetime.strptime(date, "%Y-%m-%d").date().isoformat() if date else None
+                datetime.date.fromisoformat(date).isoformat() if date else None
             )
             new_scene["date"] = formatted_date
         except ValueError:

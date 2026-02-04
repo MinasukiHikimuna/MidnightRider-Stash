@@ -91,7 +91,7 @@ def create_manifest_file(target_dir, files_copied):
                 "missing scene metadata to another missing Stash instance."
             ),
             "version": "0.0.0-abcdefg",
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "date": datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             "requires": [],
             "source_repository": "https://minasukihikimuna.github.io/MidnightRider-Stash/index.yml",
         },
