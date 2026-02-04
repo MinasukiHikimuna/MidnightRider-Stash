@@ -616,6 +616,18 @@ def stashbox_instance(stash_network, stashbox_postgres):
     container.stop()
 
 
+def find_or_create_tag(stash_instance, tag_name):
+    """Find or create a tag in stash."""
+    # First try to find existing tag
+    all_tags = stash_instance.find_tags()
+    for tag in all_tags:
+        if tag["name"] == tag_name:
+            return tag
+
+    # Tag doesn't exist, create it
+    return stash_instance.create_tag({"name": tag_name})
+
+
 def find_scene_by_stash_id(stash_instance, stash_id, endpoint):
     """Find a scene by its stash_id and endpoint."""
     return stash_instance.find_scenes({
@@ -726,12 +738,12 @@ def test_stashbox_seed_and_query(stashbox_instance):
     assert teamwork_data["tags"][0]["name"] == "Compilation"
 
 
-def test_e2e_with_local_stashbox(
+def test_e2e_basic_workflow(
     stashbox_instance,
     local_stash_instance,
     missing_stash_instance,
 ):
-    """End-to-end test: seed stashbox, run plugin, verify missing scenes are created."""
+    """Test basic workflow: performer with scenes are created in missing stash."""
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -741,39 +753,28 @@ def test_e2e_with_local_stashbox(
     internal_endpoint = f"http://stashbox:{STASHBOX_INTERNAL_PORT}/graphql"
 
     # Build test data
-    compilation_tag_id = stashbox.create_tag("Compilation")
-    performer = PerformerBuilder("Aria Phoenix", "FEMALE")
-    studio_id = stashbox.create_studio("E2E Test Studio")
+    performer = PerformerBuilder("Jade Summers", "FEMALE")
+    studio_id = stashbox.create_studio("Basic Workflow Studio")
 
     # Seed performer to stashbox
     stashbox.create_performer(performer)
-    # Override endpoint to internal network address
     performer.stash_endpoint = internal_endpoint
 
     # Build and seed scenes
-    quality_work = (SceneBuilder("Quality Work", "2024-01-15")
-                    .with_performers(performer.stashbox_id)
-                    .with_studio(studio_id))
-    gimme_all = (SceneBuilder("Gimme All", "2024-03-10")
-                 .with_performers(performer.stashbox_id)
-                 .with_studio(studio_id))
-    teamwork_vol_2 = (SceneBuilder("Teamwork Vol 2", "2024-04-05")
-                      .with_performers(performer.stashbox_id)
-                      .with_studio(studio_id)
-                      .with_tags(compilation_tag_id))
+    scene1 = (SceneBuilder("Morning Session", "2024-01-15")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
+    scene2 = (SceneBuilder("Evening Delight", "2024-02-20")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
 
-    stashbox.create_scene(quality_work)
-    stashbox.create_scene(gimme_all)
-    stashbox.create_scene(teamwork_vol_2)
-    # Override endpoints to internal network address
-    quality_work.stash_endpoint = internal_endpoint
-    gimme_all.stash_endpoint = internal_endpoint
-    teamwork_vol_2.stash_endpoint = internal_endpoint
+    stashbox.create_scene(scene1)
+    stashbox.create_scene(scene2)
+    scene1.stash_endpoint = internal_endpoint
+    scene2.stash_endpoint = internal_endpoint
 
-    # Create completionist tag in local stash
-    completionist_tag = local_stash_instance.create_tag({"name": "Completionist"})
-
-    # Create performer in local stash with Completionist tag
+    # Create completionist tag and performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
     local_stash_instance.create_performer({
         **performer.for_stash_create(),
         "tag_ids": [completionist_tag["id"]],
@@ -789,12 +790,64 @@ def test_e2e_with_local_stashbox(
     assert missing_performer["name"] == performer.name
     assert missing_performer["gender"] == performer.gender
 
-    # Verify non-compilation scenes were created in missing stash
-    verify_scene_exists(missing_stash_instance, quality_work)
-    verify_scene_exists(missing_stash_instance, gimme_all)
+    # Verify scenes were created in missing stash
+    verify_scene_exists(missing_stash_instance, scene1)
+    verify_scene_exists(missing_stash_instance, scene2)
+
+
+def test_e2e_compilation_exclusion(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that scenes tagged with 'Compilation' are excluded."""
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+
+    # Use internal endpoint for stash_ids (what containers see)
+    internal_endpoint = f"http://stashbox:{STASHBOX_INTERNAL_PORT}/graphql"
+
+    # Build test data
+    compilation_tag_id = stashbox.create_tag("Compilation")
+    performer = PerformerBuilder("Ruby Valentine", "FEMALE")
+    studio_id = stashbox.create_studio("Compilation Test Studio")
+
+    # Seed performer to stashbox
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = internal_endpoint
+
+    # Build and seed scenes - one regular, one compilation
+    regular_scene = (SceneBuilder("Regular Scene", "2024-01-15")
+                     .with_performers(performer.stashbox_id)
+                     .with_studio(studio_id))
+    compilation_scene = (SceneBuilder("Best Of Collection", "2024-02-20")
+                         .with_performers(performer.stashbox_id)
+                         .with_studio(studio_id)
+                         .with_tags(compilation_tag_id))
+
+    stashbox.create_scene(regular_scene)
+    stashbox.create_scene(compilation_scene)
+    regular_scene.stash_endpoint = internal_endpoint
+    compilation_scene.stash_endpoint = internal_endpoint
+
+    # Create completionist tag and performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Run the plugin
+    job_id = local_stash_instance.run_plugin_task("CompleteTheStash", "Complete The Stash!")
+    local_stash_instance.wait_for_job(job_id, timeout=600)
+
+    # Verify regular scene was created
+    verify_scene_exists(missing_stash_instance, regular_scene)
 
     # Verify compilation scene was NOT created
-    verify_scene_not_exists(missing_stash_instance, teamwork_vol_2)
+    verify_scene_not_exists(missing_stash_instance, compilation_scene)
 
 
 if __name__ == "__main__":
