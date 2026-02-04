@@ -390,10 +390,7 @@ class StashCompleter:
             created_msg = f"{num_created} new missing scenes created. " if num_created > 0 else ""
             destroyed_msg = f"{num_destroyed} previously missing scenes destroyed." if num_destroyed > 0 else ""
 
-            if created_msg and destroyed_msg:
-                msg = f"{created_msg}{destroyed_msg}"
-            else:
-                msg = created_msg or destroyed_msg
+            msg = f"{created_msg}{destroyed_msg}" if created_msg and destroyed_msg else created_msg or destroyed_msg
 
             self.logger.info(f"Performer {local_performer_details['name']}: {msg}.")
         else:

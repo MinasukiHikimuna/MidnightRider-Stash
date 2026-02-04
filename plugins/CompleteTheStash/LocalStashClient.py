@@ -57,10 +57,7 @@ class LocalStashClient:
                         content_type = response.headers.get("Content-Type", "")
                         image_type = mimetypes.guess_extension(content_type)
 
-                        if image_type:
-                            image_type = image_type.lstrip(".")  # Remove leading dot
-                        else:
-                            image_type = "jpeg"  # Default to jpeg if type can't be determined
+                        image_type = image_type.lstrip(".") if image_type else "jpeg"
 
                         image_data = base64.b64encode(response.content).decode("utf-8")
                         data_url = f"data:image/{image_type};base64,{image_data}"

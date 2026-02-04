@@ -74,10 +74,9 @@ def copy_files_to_plugin_directory(source_dir, target_dir, excluded_files):
     files_copied = []
 
     for entry in Path(source_dir).iterdir():
-        if entry.name not in excluded_files and not entry.name.startswith("test_"):
-            if entry.is_file():
-                shutil.copy(entry, target_dir)
-                files_copied.append(entry.name)
+        if entry.name not in excluded_files and not entry.name.startswith("test_") and entry.is_file():
+            shutil.copy(entry, target_dir)
+            files_copied.append(entry.name)
 
     return files_copied
 
