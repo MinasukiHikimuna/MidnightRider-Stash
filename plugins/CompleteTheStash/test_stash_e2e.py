@@ -26,13 +26,13 @@ assert (
 
 
 local_stashdb_port = 6661
-local_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"
+local_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"  # noqa: E501
 missing_stashdb_port = 6662
-missing_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"
+missing_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"  # noqa: E501
 missing_tpdb_port = 6663
-missing_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2ODcyfQ.ta4AsOkuJ6tVoZoMVJmxioZgluGo6oiNks-crAqDj8E"
+missing_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2ODcyfQ.ta4AsOkuJ6tVoZoMVJmxioZgluGo6oiNks-crAqDj8E"  # noqa: E501
 local_tpdb_port = 6664
-local_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2OTAwfQ.Jd8W-1s8Dq_L6H2hXZJqvMkPvFkM7jKqL9H2hXZJqvM"
+local_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2OTAwfQ.Jd8W-1s8Dq_L6H2hXZJqvMkPvFkM7jKqL9H2hXZJqvM"  # noqa: E501
 
 
 def start_stash_process(executable_path, working_dir) -> subprocess.Popen[bytes]:
@@ -87,7 +87,10 @@ def create_manifest_file(target_dir, files_copied):
         "id": "CompleteTheStash",
         "name": "CompleteTheStash",
         "metadata": {
-            "description": "Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance.",
+            "description": (
+                "Finds missing scenes for selected performers and creates "
+                "missing scene metadata to another missing Stash instance."
+            ),
             "version": "0.0.0-abcdefg",
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "requires": [],

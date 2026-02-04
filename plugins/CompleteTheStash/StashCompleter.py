@@ -162,7 +162,8 @@ class StashCompleter:
 
             performer_id = existing_performers[0]["id"]
             self.logger.debug(
-                f"Performer {performer_in['name']}: Matched with Stash ID {performer_stash_id} to missing Stash ID {performer_id}"
+                f"Performer {performer_in['name']}: Matched with Stash ID {performer_stash_id} "
+                f"to missing Stash ID {performer_id}"
             )
 
             performer_in["id"] = performer_id
@@ -232,8 +233,9 @@ class StashCompleter:
             local_performer_name = local_performer["name"]
             performer_stash_id = self._get_stash_id(local_performer)
             if not performer_stash_id:
+                endpoint = self.config.get('stashboxEndpoint')
                 self.logger.warning(
-                    f"Performer {local_performer_name} does not have a Stashbox ID for endpoint {self.config.get('stashboxEndpoint')}. Skipping..."
+                    f"Performer {local_performer_name} does not have a Stashbox ID for endpoint {endpoint}. Skipping..."
                 )
                 continue
 
@@ -249,7 +251,7 @@ class StashCompleter:
                 local_performer["id"], missing_performers_by_stash_id
             )
 
-        # Destroy scenes which weren't associated with a performer in local Stash but existed both in local and missing Stash.
+        # Destroy scenes not associated with a performer in local Stash but existing in both local and missing Stash.
         scenes_in_local_stash = self.local_stash_client.find_all_scenes()
         scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
 
@@ -330,8 +332,10 @@ class StashCompleter:
             elif existing_missing_scene_stash_id not in stashbox_scene_ids:
                 self.missing_stash_client.destroy_scene(existing_missing_scene["id"])
                 destroyed_scenes_stash_ids.append(existing_missing_scene_stash_id)
+                title = existing_missing_scene['title']
+                scene_id = existing_missing_scene['id']
                 self.logger.info(
-                    f"Scene {existing_missing_scene['title']} (ID: {existing_missing_scene['id']}) destroyed as it was no longer found in StashDB scenes."
+                    f"Scene {title} (ID: {scene_id}) destroyed as it was no longer found in StashDB scenes."
                 )
 
         missing_scenes = self.compare_scenes(
@@ -381,8 +385,10 @@ class StashCompleter:
                 self.logger.progress(progress)
 
         if len(created_scenes_stash_ids) > 0 or len(destroyed_scenes_stash_ids) > 0:
-            created_msg = f"{len(created_scenes_stash_ids)} new missing scenes created. " if len(created_scenes_stash_ids) > 0 else ""
-            destroyed_msg = f"{len(destroyed_scenes_stash_ids)} previously missing scenes destroyed." if len(destroyed_scenes_stash_ids) > 0 else ""
+            num_created = len(created_scenes_stash_ids)
+            num_destroyed = len(destroyed_scenes_stash_ids)
+            created_msg = f"{num_created} new missing scenes created. " if num_created > 0 else ""
+            destroyed_msg = f"{num_destroyed} previously missing scenes destroyed." if num_destroyed > 0 else ""
 
             if created_msg and destroyed_msg:
                 msg = f"{created_msg}{destroyed_msg}"
@@ -417,5 +423,6 @@ class StashCompleter:
             scene = scenes[0]
             self.missing_stash_client.destroy_scene(scene["id"])
             self.logger.info(
-                f"Scene {scene['title']} (ID: {scene['id']}, Stashbox ID: {stashbox_id}) destroyed as it was found in the local Stash."
+                f"Scene {scene['title']} (ID: {scene['id']}, Stashbox ID: {stashbox_id}) "
+                f"destroyed as it was found in the local Stash."
             )

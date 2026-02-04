@@ -99,7 +99,8 @@ def get_complete_the_stash_config(local_configuration) -> CompleteTheStashConfig
         and not complete_the_stash_config.get("missingStashTpdbApiKey")
     ):
         raise ValueError(
-            "No missing Stash instances are configured. No missing scenes can be sourced. Are you missing configuration?"
+            "No missing Stash instances are configured. No missing scenes can be sourced. "
+            "Are you missing configuration?"
         )
 
     if complete_the_stash_config.get(
@@ -188,7 +189,8 @@ def process_input(json_input, stash_completer: StashCompleter):
             )
             return
 
-        logger.debug(f"Processing scene create type {event_type} for scene {scene_id} for endpoint {stash_completer.stashbox_client.endpoint}.")
+        endpoint = stash_completer.stashbox_client.endpoint
+        logger.debug(f"Processing scene create type {event_type} for scene {scene_id} for endpoint {endpoint}.")
         stash_completer.process_scene_by_id(scene_id)
     else:
         logger.error(f"Invalid input: {json_input}")
