@@ -1,10 +1,10 @@
 import os
 import shutil
-import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -12,11 +12,12 @@ import yaml
 from dotenv import load_dotenv
 from stashapi import log
 from stashapi.stashapp import StashInterface
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
 
 
 load_dotenv()
 
-assert os.getenv("STASH_BIN") is not None, "STASH_BIN environment variable is not set"
 assert (
     os.getenv("STASHDB_API_KEY") is not None
 ), "STASHDB_API_KEY environment variable is not set"
@@ -24,29 +25,47 @@ assert (
     os.getenv("TPDB_API_KEY") is not None
 ), "TPDB_API_KEY environment variable is not set"
 
+STASH_IMAGE = "stashapp/stash:latest"
+STASH_INTERNAL_PORT = 9999
 
-local_stashdb_port = 6661
 local_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjM0fQ.8CDVgMWaCdKjfO1_o0fgjxj3mCUpj-FkiI-ePAvuDgc"  # noqa: E501
-missing_stashdb_port = 6662
 missing_stashdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIxODgwNjUxfQ.TiTtehm66znchYYm0za7szdKlfKFi97CHsXO_vcgP38"  # noqa: E501
-missing_tpdb_port = 6663
 missing_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2ODcyfQ.ta4AsOkuJ6tVoZoMVJmxioZgluGo6oiNks-crAqDj8E"  # noqa: E501
-local_tpdb_port = 6664
 local_tpdb_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJ0ZXN0Iiwic3ViIjoiQVBJS2V5IiwiaWF0IjoxNzIyMzM2OTAwfQ.Jd8W-1s8Dq_L6H2hXZJqvMkPvFkM7jKqL9H2hXZJqvM"  # noqa: E501
 
 
-def start_stash_process(executable_path, working_dir) -> subprocess.Popen[bytes]:
-    return subprocess.Popen([executable_path, "--nobrowser"], cwd=working_dir)
+STASH_CONFIG_DIR = "/root/.stash"
+RELATIVE_PATH_KEYS = ["blobs_path", "cache", "database", "generated", "plugins_path", "scrapers_path"]
 
 
-def stop_stash_process(stash_process):
-    stash_process.terminate()
-    stash_process.wait()
+def make_config_paths_absolute(config):
+    """Rewrite relative path fields to absolute paths under /root/.stash/.
+
+    The Stash binary resolves relative paths from its working directory, which
+    differs between the host binary and the Docker container. Making them
+    absolute ensures the container finds plugins, generated files, etc.
+    """
+    for key in RELATIVE_PATH_KEYS:
+        if key in config and not str(config[key]).startswith("/"):
+            config[key] = f"{STASH_CONFIG_DIR}/{config[key]}"
 
 
-def wait_for_stash_ready(port, api_key=None, timeout=60, poll_interval=0.5):
+def create_stash_container(config_dir, network, network_alias=None):
+    container = (
+        DockerContainer(STASH_IMAGE)
+        .with_volume_mapping(str(config_dir), "/root/.stash", "rw")
+        .with_exposed_ports(STASH_INTERNAL_PORT)
+        .with_env("STASH_PORT", str(STASH_INTERNAL_PORT))
+        .with_network(network)
+    )
+    if network_alias:
+        container.with_network_aliases(network_alias)
+    return container
+
+
+def wait_for_stash_ready(host, port, api_key=None, timeout=60, poll_interval=0.5):
     """Wait for Stash to be ready to accept connections."""
-    url = f"http://localhost:{port}/graphql"
+    url = f"http://{host}:{port}/graphql"
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
@@ -61,10 +80,10 @@ def wait_for_stash_ready(port, api_key=None, timeout=60, poll_interval=0.5):
             with urllib.request.urlopen(req, timeout=5) as response:
                 if response.status == 200:
                     return True
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ConnectionError, OSError):
             pass
         time.sleep(poll_interval)
-    raise TimeoutError(f"Stash on port {port} did not become ready within {timeout}s")
+    raise TimeoutError(f"Stash at {url} did not become ready within {timeout}s")
 
 
 def copy_files_to_plugin_directory(source_dir, target_dir, excluded_files):
@@ -91,7 +110,7 @@ def create_manifest_file(target_dir, files_copied):
                 "missing scene metadata to another missing Stash instance."
             ),
             "version": "0.0.0-abcdefg",
-            "date": datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            "date": datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S"),
             "requires": [],
             "source_repository": "https://minasukihikimuna.github.io/MidnightRider-Stash/index.yml",
         },
@@ -139,22 +158,23 @@ class SceneBuilder:
 
 
 @pytest.fixture(scope="module")
-def local_stash_instance_stashdb():
+def stash_network():
+    with Network() as network:
+        yield network
+
+
+@pytest.fixture(scope="module")
+def local_stash_instance_stashdb(stash_network):
     test_dir = Path(__file__).resolve().parent
     template_dir = test_dir / ".template-stash"
-    local_working_dir = test_dir / ".local-stashdb-stash"
-    plugin_dir = local_working_dir / "plugins" / "CompleteTheStash"
-    executable_path = os.getenv("STASH_BIN")
+    config_dir = Path(tempfile.mkdtemp())
+    plugin_dir = config_dir / "plugins" / "CompleteTheStash"
     local_config_path = template_dir / "local-config.txt"
-
-    if local_working_dir.exists():
-        shutil.rmtree(local_working_dir)
-    local_working_dir.mkdir(parents=True, exist_ok=True)
 
     with local_config_path.open() as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_stashdb_api_key
-    local_config["port"] = local_stashdb_port
+    local_config["port"] = STASH_INTERNAL_PORT
 
     stashdb_found = False
     for stash_box in local_config.get("stash_boxes", []):
@@ -172,51 +192,50 @@ def local_stash_instance_stashdb():
     ] = "Compilation"
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "missingStashAddress"
-    ] = f"http://localhost:{missing_stashdb_port}"
+    ] = f"http://missing-stashdb:{STASH_INTERNAL_PORT}"
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "missingStashApiKey"
     ] = missing_stashdb_api_key
 
-    with (local_working_dir / "config.yml").open("w") as file:
+    make_config_paths_absolute(local_config)
+    with (config_dir / "config.yml").open("w") as file:
         yaml.safe_dump(local_config, file)
 
-    excluded_files = {".gitignore"}
+    excluded_files = {".gitignore", "stash-macos"}
     files_copied = copy_files_to_plugin_directory(test_dir, plugin_dir, excluded_files)
     create_manifest_file(plugin_dir, files_copied)
 
-    stash_process = start_stash_process(executable_path, local_working_dir)
-    wait_for_stash_ready(local_stashdb_port, api_key=local_stashdb_api_key)
+    container = create_stash_container(config_dir, stash_network)
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
+    wait_for_stash_ready(host, port, api_key=local_stashdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
-            "host": "localhost",
-            "port": local_stashdb_port,
+            "host": host,
+            "port": port,
             "logger": log,
             "ApiKey": local_stashdb_api_key,
         }
     )
 
-    stop_stash_process(stash_process)
+    container.stop()
 
 
 @pytest.fixture(scope="module")
-def local_stash_instance_tpdb():
+def local_stash_instance_tpdb(stash_network):
     test_dir = Path(__file__).resolve().parent
     template_dir = test_dir / ".template-stash"
-    local_working_dir = test_dir / ".local-tpdb-stash"
-    plugin_dir = local_working_dir / "plugins" / "CompleteTheStash"
-    executable_path = os.getenv("STASH_BIN")
+    config_dir = Path(tempfile.mkdtemp())
+    plugin_dir = config_dir / "plugins" / "CompleteTheStash"
     local_config_path = template_dir / "local-config.txt"
-
-    if local_working_dir.exists():
-        shutil.rmtree(local_working_dir)
-    local_working_dir.mkdir(parents=True, exist_ok=True)
 
     with local_config_path.open() as file:
         local_config = yaml.safe_load(file)
     local_config["api_key"] = local_tpdb_api_key
-    local_config["port"] = local_tpdb_port
+    local_config["port"] = STASH_INTERNAL_PORT
 
     tpdb_found = False
     for stash_box in local_config.get("stash_boxes", []):
@@ -234,102 +253,106 @@ def local_stash_instance_tpdb():
     ] = "Compilation"
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "missingStashTpdbAddress"
-    ] = f"http://localhost:{missing_tpdb_port}"
+    ] = f"http://missing-tpdb:{STASH_INTERNAL_PORT}"
     local_config["plugins"]["settings"]["CompleteTheStash"][
         "missingStashTpdbApiKey"
     ] = missing_tpdb_api_key
 
-    with (local_working_dir / "config.yml").open("w") as file:
+    make_config_paths_absolute(local_config)
+    with (config_dir / "config.yml").open("w") as file:
         yaml.safe_dump(local_config, file)
 
-    excluded_files = {".gitignore"}
+    excluded_files = {".gitignore", "stash-macos"}
     files_copied = copy_files_to_plugin_directory(test_dir, plugin_dir, excluded_files)
     create_manifest_file(plugin_dir, files_copied)
 
-    stash_process = start_stash_process(executable_path, local_working_dir)
-    wait_for_stash_ready(local_tpdb_port, api_key=local_tpdb_api_key)
+    container = create_stash_container(config_dir, stash_network)
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
+    wait_for_stash_ready(host, port, api_key=local_tpdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
-            "host": "localhost",
-            "port": local_tpdb_port,
+            "host": host,
+            "port": port,
             "logger": log,
             "ApiKey": local_tpdb_api_key,
         }
     )
 
-    stop_stash_process(stash_process)
+    container.stop()
 
 
 @pytest.fixture(scope="module")
-def missing_stash_instance_stashdb():
+def missing_stash_instance_stashdb(stash_network):
     test_dir = Path(__file__).resolve().parent
     template_dir = test_dir / ".template-stash"
-    missing_working_dir = test_dir / ".missing-stashdb-stash"
-    executable_path = os.getenv("STASH_BIN")
+    config_dir = Path(tempfile.mkdtemp())
     missing_config_path = template_dir / "missing-stashdb-config.txt"
-
-    if missing_working_dir.exists():
-        shutil.rmtree(missing_working_dir)
-    missing_working_dir.mkdir(parents=True, exist_ok=True)
 
     with missing_config_path.open() as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_stashdb_api_key
+    missing_config["port"] = STASH_INTERNAL_PORT
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("STASHDB_API_KEY")
-    with (missing_working_dir / "config.yml").open("w") as file:
+    make_config_paths_absolute(missing_config)
+    with (config_dir / "config.yml").open("w") as file:
         yaml.safe_dump(missing_config, file)
 
-    stash_process = start_stash_process(executable_path, missing_working_dir)
-    wait_for_stash_ready(missing_stashdb_port, api_key=missing_stashdb_api_key)
+    container = create_stash_container(config_dir, stash_network, network_alias="missing-stashdb")
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
+    wait_for_stash_ready(host, port, api_key=missing_stashdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
-            "host": "localhost",
-            "port": missing_stashdb_port,
+            "host": host,
+            "port": port,
             "apikey": missing_stashdb_api_key,
             "logger": log,
         }
     )
 
-    stop_stash_process(stash_process)
+    container.stop()
 
 
 @pytest.fixture(scope="module")
-def missing_stash_instance_tpdb():
+def missing_stash_instance_tpdb(stash_network):
     test_dir = Path(__file__).resolve().parent
     template_dir = test_dir / ".template-stash"
-    missing_working_dir = test_dir / ".missing-tpdb-stash"
-    executable_path = os.getenv("STASH_BIN")
+    config_dir = Path(tempfile.mkdtemp())
     missing_config_path = template_dir / "missing-tpdb-config.txt"
-
-    if missing_working_dir.exists():
-        shutil.rmtree(missing_working_dir)
-    missing_working_dir.mkdir(parents=True, exist_ok=True)
 
     with missing_config_path.open() as file:
         missing_config = yaml.safe_load(file)
     missing_config["api_key"] = missing_tpdb_api_key
+    missing_config["port"] = STASH_INTERNAL_PORT
     missing_config["stash_boxes"][0]["apikey"] = os.getenv("TPDB_API_KEY")
-    with (missing_working_dir / "config.yml").open("w") as file:
+    make_config_paths_absolute(missing_config)
+    with (config_dir / "config.yml").open("w") as file:
         yaml.safe_dump(missing_config, file)
 
-    stash_process = start_stash_process(executable_path, missing_working_dir)
-    wait_for_stash_ready(missing_tpdb_port, api_key=missing_tpdb_api_key)
+    container = create_stash_container(config_dir, stash_network, network_alias="missing-tpdb")
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(STASH_INTERNAL_PORT))
+    wait_for_stash_ready(host, port, api_key=missing_tpdb_api_key)
 
     yield StashInterface(
         {
             "scheme": "http",
-            "host": "localhost",
-            "port": missing_tpdb_port,
+            "host": host,
+            "port": port,
             "apikey": missing_tpdb_api_key,
             "logger": log,
         }
     )
 
-    stop_stash_process(stash_process)
+    container.stop()
 
 
 def test_stashdb(
