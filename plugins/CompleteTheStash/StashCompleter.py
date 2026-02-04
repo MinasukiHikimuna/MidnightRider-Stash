@@ -1,9 +1,12 @@
-from datetime import datetime
-from typing import Any
+from __future__ import annotations
 
-from LocalStashClient import LocalStashClient
-from MissingStashClient import MissingStashClient
-from StashboxClient import StashboxClient
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashboxClient import StashboxClient
 
 
 class StashCompleter:
