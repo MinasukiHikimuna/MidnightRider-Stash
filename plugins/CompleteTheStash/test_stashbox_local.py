@@ -426,5 +426,539 @@ def test_idempotency(
     verify_scene_exists(missing_stash_instance, scene2)
 
 
+def test_destroy_scene_when_added_to_local(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that scenes are destroyed from missing stash when added to local stash."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data - performer with 2 scenes
+    performer = PerformerBuilder("Mia Rivers", "FEMALE")
+    studio_id = stashbox.create_studio("Destroy Test Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    scene_to_keep = (SceneBuilder("Scene To Keep", "2024-01-15")
+                     .with_performers(performer.stashbox_id)
+                     .with_studio(studio_id))
+    scene_to_destroy = (SceneBuilder("Scene To Destroy", "2024-02-20")
+                        .with_performers(performer.stashbox_id)
+                        .with_studio(studio_id))
+
+    stashbox.create_scene(scene_to_keep)
+    stashbox.create_scene(scene_to_destroy)
+    scene_to_keep.stash_endpoint = external_endpoint
+    scene_to_destroy.stash_endpoint = external_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+
+    # First run - both scenes should be created in missing stash
+    completer.process_performers()
+    verify_scene_exists(missing_stash_instance, scene_to_keep)
+    verify_scene_exists(missing_stash_instance, scene_to_destroy)
+
+    # Add one scene to local stash (simulating user has acquired it)
+    local_stash_instance.create_scene(scene_to_destroy.for_stash_create())
+
+    # Second run - scene_to_destroy should be destroyed from missing stash
+    completer.process_performers()
+
+    # Verify scene_to_keep still exists in missing stash
+    verify_scene_exists(missing_stash_instance, scene_to_keep)
+
+    # Verify scene_to_destroy was destroyed from missing stash
+    verify_scene_not_exists(missing_stash_instance, scene_to_destroy)
+
+
+def test_process_scene_by_id(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test the hook pathway - process_scene_by_id destroys scene from missing stash."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data
+    performer = PerformerBuilder("Nina Brooks", "FEMALE")
+    studio_id = stashbox.create_studio("Hook Test Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    scene = (SceneBuilder("Hook Test Scene", "2024-03-15")
+             .with_performers(performer.stashbox_id)
+             .with_studio(studio_id))
+
+    stashbox.create_scene(scene)
+    scene.stash_endpoint = external_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+
+    # First run - scene created in missing stash
+    completer.process_performers()
+    verify_scene_exists(missing_stash_instance, scene)
+
+    # Create the same scene in local stash (simulating scene.Create hook trigger)
+    local_scene = local_stash_instance.create_scene(scene.for_stash_create())
+
+    # Call process_scene_by_id (the hook pathway)
+    completer.process_scene_by_id(local_scene["id"])
+
+    # Verify scene was destroyed from missing stash
+    verify_scene_not_exists(missing_stash_instance, scene)
+
+
+def test_process_scene_by_id_not_found(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test error early returns in process_scene_by_id."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+
+    # Test 1: Call with non-existent scene ID - should not raise error
+    completer.process_scene_by_id(99999)
+
+    # Test 2: Create scene WITHOUT stash_ids and call process_scene_by_id
+    scene_without_stash_id = local_stash_instance.create_scene({"title": "No Stash ID Scene"})
+    completer.process_scene_by_id(scene_without_stash_id["id"])
+
+    # If we get here without exception, the test passes
+
+
+def test_parent_studio_creation(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that parent-child studio relationship is created correctly."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data with parent-child studio relationship
+    performer = PerformerBuilder("Stella Moon", "FEMALE")
+    parent_studio_id = stashbox.create_studio("Network Studios")
+    child_studio_id = stashbox.create_studio("Sub Channel", parent_id=parent_studio_id)
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    scene = (SceneBuilder("Parent Studio Test", "2024-04-01")
+             .with_performers(performer.stashbox_id)
+             .with_studio(child_studio_id))
+
+    stashbox.create_scene(scene)
+    scene.stash_endpoint = external_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+    completer.process_performers()
+
+    # Verify scene was created
+    verify_scene_exists(missing_stash_instance, scene)
+
+    # Verify child studio was created with correct parent
+    # Need to specify fragment to include parent_studio
+    child_studios = missing_stash_instance.find_studios(
+        {"name": {"value": "Sub Channel", "modifier": "EQUALS"}},
+        fragment="id name parent_studio { id name }",
+    )
+    assert len(child_studios) == 1
+    child_studio = child_studios[0]
+    assert child_studio["parent_studio"] is not None
+    assert child_studio["parent_studio"]["name"] == "Network Studios"
+
+    # Verify parent studio was also created
+    parent_studios = missing_stash_instance.find_studios(
+        {"name": {"value": "Network Studios", "modifier": "EQUALS"}},
+    )
+    assert len(parent_studios) == 1
+
+
+def test_multi_performer_scene(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test scene with multiple performers where only one is tracked."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data - 2 performers, but only 1 in local stash
+    performer_tracked = PerformerBuilder("Tracked Performer", "FEMALE")
+    performer_not_tracked = PerformerBuilder("Not Tracked Performer", "FEMALE")
+    studio_id = stashbox.create_studio("Multi Performer Studio")
+
+    stashbox.create_performer(performer_tracked)
+    stashbox.create_performer(performer_not_tracked)
+    performer_tracked.stash_endpoint = external_endpoint
+    performer_not_tracked.stash_endpoint = external_endpoint
+
+    # Scene with both performers
+    scene = (SceneBuilder("Multi Performer Scene", "2024-05-01")
+             .with_performers(performer_tracked.stashbox_id, performer_not_tracked.stashbox_id)
+             .with_studio(studio_id))
+
+    stashbox.create_scene(scene)
+    scene.stash_endpoint = external_endpoint
+
+    # Create ONLY the tracked performer in local stash with Completionist tag
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer_tracked.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+    completer.process_performers()
+
+    # Verify scene was created
+    verify_scene_exists(missing_stash_instance, scene)
+
+    # Query scene with explicit fragment to verify performer count
+    scenes = missing_stash_instance.find_scenes(
+        {
+            "stash_id_endpoint": {
+                "endpoint": scene.stash_endpoint,
+                "stash_id": scene.stashbox_id,
+                "modifier": "EQUALS",
+            }
+        },
+        fragment="id title performers { id name }",
+    )
+    assert len(scenes) == 1
+    created_scene = scenes[0]
+
+    # Verify only the tracked performer is attached to the scene
+    assert len(created_scene["performers"]) == 1
+    assert created_scene["performers"][0]["name"] == performer_tracked.name
+
+
+def test_performer_without_stash_id(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that performers without stash_ids are skipped with a warning."""
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Create performer in local stash WITHOUT stash_ids
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        "name": "No Stash ID Performer",
+        "gender": "FEMALE",
+        "tag_ids": [completionist_tag["id"]],
+        # No stash_ids!
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+
+    # Should not raise an error
+    completer.process_performers()
+
+    # Verify performer was NOT created in missing stash
+    missing_performers = missing_stash_instance.find_performers({
+        "name": {"value": "No Stash ID Performer", "modifier": "EQUALS"}
+    })
+    assert len(missing_performers) == 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
