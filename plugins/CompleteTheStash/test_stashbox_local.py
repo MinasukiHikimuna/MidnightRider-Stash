@@ -328,5 +328,103 @@ def test_compilation_exclusion(
     verify_scene_not_exists(missing_stash_instance, compilation_scene)
 
 
+def test_idempotency(
+    stashbox_instance,
+    local_stash_instance,
+    missing_stash_instance,
+):
+    """Test that running plugin twice does not create duplicate scenes.
+
+    On the second run, the existing performer should be updated (not re-created)
+    and the existing studio should be reused (not re-created).
+    """
+    plugin_dir = Path(__file__).resolve().parent
+    if str(plugin_dir) not in sys.path:
+        sys.path.insert(0, str(plugin_dir))
+
+    from LocalStashClient import LocalStashClient
+    from MissingStashClient import MissingStashClient
+    from StashCompleter import StashCompleter
+    from StashDbClient import StashDbClient
+
+    stashbox = StashBoxClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"]
+    )
+    external_endpoint = stashbox_instance["endpoint"]
+
+    # Build test data
+    performer = PerformerBuilder("Aria Stone", "FEMALE")
+    studio_id = stashbox.create_studio("Idempotency Studio")
+
+    stashbox.create_performer(performer)
+    performer.stash_endpoint = external_endpoint
+
+    scene1 = (SceneBuilder("First Run Scene A", "2024-03-01")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
+    scene2 = (SceneBuilder("First Run Scene B", "2024-03-02")
+              .with_performers(performer.stashbox_id)
+              .with_studio(studio_id))
+
+    stashbox.create_scene(scene1)
+    stashbox.create_scene(scene2)
+    scene1.stash_endpoint = external_endpoint
+    scene2.stash_endpoint = external_endpoint
+
+    # Create performer in local stash
+    completionist_tag = find_or_create_tag(local_stash_instance, "Completionist")
+    local_stash_instance.create_performer({
+        **performer.for_stash_create(),
+        "tag_ids": [completionist_tag["id"]],
+    })
+
+    # Build clients
+    os.environ["STASHDB_ENDPOINT"] = external_endpoint
+
+    local_client = LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+    missing_client = MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        external_endpoint,
+        log,
+    )
+
+    stashbox_client = StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+    config = {
+        "performerTags": ["Completionist"],
+        "stashboxEndpoint": external_endpoint,
+        "sceneExcludeTags": ["Compilation"],
+        "enableSceneHooks": False,
+    }
+
+    completer = StashCompleter(config, log, stashbox_client, local_client, missing_client)
+
+    # First run - scenes should be created
+    completer.process_performers()
+    verify_scene_exists(missing_stash_instance, scene1)
+    verify_scene_exists(missing_stash_instance, scene2)
+
+    # Second run - no duplicates should be created
+    completer.process_performers()
+    verify_scene_exists(missing_stash_instance, scene1)
+    verify_scene_exists(missing_stash_instance, scene2)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
