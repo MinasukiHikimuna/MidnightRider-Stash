@@ -1,3 +1,4 @@
+import os
 import tempfile
 from pathlib import Path
 
@@ -7,6 +8,11 @@ from stashapi import log
 from stashapi.stashapp import StashInterface
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
+
+from LocalStashClient import LocalStashClient
+from MissingStashClient import MissingStashClient
+from StashCompleter import StashCompleter
+from StashDbClient import StashDbClient
 
 from test_helpers import (
     POSTGRES_IMAGE,
@@ -212,3 +218,55 @@ def missing_stash_instance(stash_network, stashbox_instance):
     yield interface
 
     container.stop()
+
+
+@pytest.fixture
+def stashbox_client(stashbox_instance):
+    """StashDB client for querying stashbox."""
+    return StashDbClient(
+        stashbox_instance["endpoint"],
+        stashbox_instance["api_key"],
+    )
+
+
+@pytest.fixture
+def local_client(local_stash_instance):
+    """LocalStashClient for interacting with the local stash instance."""
+    return LocalStashClient(
+        {
+            "Scheme": local_stash_instance._test_scheme,
+            "Host": local_stash_instance._test_host,
+            "Port": local_stash_instance._test_port,
+            "ApiKey": local_stash_instance._test_api_key,
+        },
+        log,
+    )
+
+
+@pytest.fixture
+def missing_client(missing_stash_instance, stashbox_instance):
+    """MissingStashClient for interacting with the missing stash instance."""
+    return MissingStashClient(
+        missing_stash_instance._test_scheme,
+        missing_stash_instance._test_host,
+        missing_stash_instance._test_port,
+        missing_stash_instance._test_api_key,
+        stashbox_instance["endpoint"],
+        log,
+    )
+
+
+@pytest.fixture
+def make_completer(stashbox_instance, stashbox_client, local_client, missing_client):
+    """Factory fixture for creating StashCompleter with optional config overrides."""
+    def _make_completer(**config_overrides):
+        os.environ["STASHDB_ENDPOINT"] = stashbox_instance["endpoint"]
+        config = {
+            "performerTags": ["Completionist"],
+            "stashboxEndpoint": stashbox_instance["endpoint"],
+            "sceneExcludeTags": ["Compilation"],
+            "enableSceneHooks": False,
+        }
+        config.update(config_overrides)
+        return StashCompleter(config, log, stashbox_client, local_client, missing_client)
+    return _make_completer
