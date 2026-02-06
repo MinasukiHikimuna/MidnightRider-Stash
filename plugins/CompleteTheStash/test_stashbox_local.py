@@ -1,7 +1,5 @@
 import os
-import sys
 import urllib.request
-from pathlib import Path
 
 import pytest
 from stashapi import log
@@ -15,6 +13,11 @@ from test_helpers import (
     verify_scene_exists,
     verify_scene_not_exists,
 )
+
+from LocalStashClient import LocalStashClient
+from MissingStashClient import MissingStashClient
+from StashCompleter import StashCompleter
+from StashDbClient import StashDbClient
 
 
 def test_stashbox_basic_query(stashbox_instance):
@@ -145,16 +148,6 @@ def test_basic_workflow(
     missing_stash_instance,
 ):
     """Test basic workflow: performer with scenes are created in missing stash."""
-    # Add plugin directory to path for imports
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -240,16 +233,6 @@ def test_compilation_exclusion(
     missing_stash_instance,
 ):
     """Test that scenes tagged with 'Compilation' are excluded."""
-    # Add plugin directory to path for imports
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -338,15 +321,6 @@ def test_idempotency(
     On the second run, the existing performer should be updated (not re-created)
     and the existing studio should be reused (not re-created).
     """
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -432,15 +406,6 @@ def test_destroy_scene_when_added_to_local(
     missing_stash_instance,
 ):
     """Test that scenes are destroyed from missing stash when added to local stash."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -533,15 +498,6 @@ def test_process_scene_by_id(
     missing_stash_instance,
 ):
     """Test the hook pathway - process_scene_by_id destroys scene from missing stash."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -625,15 +581,6 @@ def test_process_scene_by_id_not_found(
     missing_stash_instance,
 ):
     """Test error early returns in process_scene_by_id."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     external_endpoint = stashbox_instance["endpoint"]
 
     # Build clients
@@ -688,15 +635,6 @@ def test_parent_studio_creation(
     missing_stash_instance,
 ):
     """Test that parent-child studio relationship is created correctly."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -789,15 +727,6 @@ def test_multi_performer_scene(
     missing_stash_instance,
 ):
     """Test scene with multiple performers where only one is tracked."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     stashbox = StashBoxClient(
         stashbox_instance["endpoint"],
         stashbox_instance["api_key"]
@@ -894,15 +823,6 @@ def test_performer_without_stash_id(
     missing_stash_instance,
 ):
     """Test that performers without stash_ids are skipped with a warning."""
-    plugin_dir = Path(__file__).resolve().parent
-    if str(plugin_dir) not in sys.path:
-        sys.path.insert(0, str(plugin_dir))
-
-    from LocalStashClient import LocalStashClient
-    from MissingStashClient import MissingStashClient
-    from StashCompleter import StashCompleter
-    from StashDbClient import StashDbClient
-
     external_endpoint = stashbox_instance["endpoint"]
 
     # Create performer in local stash WITHOUT stash_ids
