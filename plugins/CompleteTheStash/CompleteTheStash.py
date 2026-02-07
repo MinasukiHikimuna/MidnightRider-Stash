@@ -174,9 +174,17 @@ def create_missing_stash_client(missing_scene_source: MissingSceneSource):
 def process_input(json_input, stash_completer: StashCompleter):
     logger.debug(f"Processing input: {json_input}")
     event_type = json_input.get("args", {}).get("hookContext", {}).get("type")
-    if json_input.get("args", {}).get("mode") == "process_performers":
-        logger.info(f"Processing performers for endpoint {stash_completer.stashbox_client.endpoint}.")
+    mode = json_input.get("args", {}).get("mode")
+    endpoint = stash_completer.stashbox_client.endpoint
+    if mode == "process_performers":
+        logger.info(f"Processing performers for endpoint {endpoint}.")
         stash_completer.process_performers()
+    elif mode == "process_studios":
+        logger.info(f"Processing studios for endpoint {endpoint}.")
+        stash_completer.process_studios()
+    elif mode == "process_tags":
+        logger.info(f"Processing tags for endpoint {endpoint}.")
+        stash_completer.process_tags()
     elif event_type in ["Scene.Create.Post", "Scene.Update.Post"]:
         try:
             scene_id = json_input.get("args", {}).get("hookContext", {}).get("id")

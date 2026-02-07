@@ -255,27 +255,7 @@ class StashCompleter:
                 local_performer["id"], missing_performers_by_stash_id
             )
 
-        # Destroy scenes not associated with a performer in local Stash but existing in both local and missing Stash.
-        scenes_in_local_stash = self.local_stash_client.find_all_scenes()
-        scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
-
-        # Match scenes in local and missing stashes by stash_id
-        local_scene_stash_ids = {self._get_stash_id(scene) for scene in scenes_in_local_stash}
-        local_scene_stash_ids.discard(None)
-
-        scenes_to_destroy = []
-        for missing_scene in scenes_in_missing_stash:
-            missing_scene_stash_id = self._get_stash_id(missing_scene)
-            if missing_scene_stash_id in local_scene_stash_ids:
-                scenes_to_destroy.append(missing_scene)
-
-        # Destroy missing scenes that exist in local stash
-        for scene in scenes_to_destroy:
-            self.missing_stash_client.destroy_scene(scene["id"])
-            self.logger.info(f"Destroyed missing scene: {scene['title']} (ID: {scene['id']})")
-
-        if len(scenes_to_destroy) > 0:
-            self.logger.info(f"Destroyed {len(scenes_to_destroy)} scenes from missing stash that exist in local stash.")
+        self._cleanup_duplicate_missing_scenes()
 
     def process_performer(
         self, local_performer_id: int, missing_performers_by_stash_id: dict[str, int]
@@ -412,9 +392,192 @@ class StashCompleter:
             created_msg = f"{num_created} new missing scenes created. " if num_created > 0 else ""
             destroyed_msg = f"{num_destroyed} previously missing scenes destroyed." if num_destroyed > 0 else ""
             msg = f"{created_msg}{destroyed_msg}" if created_msg and destroyed_msg else created_msg or destroyed_msg
-            self.logger.info(f"Performer {performer_name}: {msg}.")
+            self.logger.info(f"Performer {performer_name}: {msg}")
         else:
             self.logger.info(f"Performer {performer_name}: No changes detected.")
+
+    def _cleanup_duplicate_missing_scenes(self):
+        """Destroy scenes from missing Stash that now exist in local Stash."""
+        scenes_in_local_stash = self.local_stash_client.find_all_scenes()
+        scenes_in_missing_stash = self.missing_stash_client.find_all_scenes()
+
+        local_scene_stash_ids = {self._get_stash_id(scene) for scene in scenes_in_local_stash}
+        local_scene_stash_ids.discard(None)
+
+        scenes_to_destroy = []
+        for missing_scene in scenes_in_missing_stash:
+            missing_scene_stash_id = self._get_stash_id(missing_scene)
+            if missing_scene_stash_id in local_scene_stash_ids:
+                scenes_to_destroy.append(missing_scene)
+
+        for scene in scenes_to_destroy:
+            self.missing_stash_client.destroy_scene(scene["id"])
+            self.logger.info(f"Destroyed missing scene: {scene['title']} (ID: {scene['id']})")
+
+        if len(scenes_to_destroy) > 0:
+            self.logger.info(f"Destroyed {len(scenes_to_destroy)} scenes from missing stash that exist in local stash.")
+
+    def _ensure_performers_for_scenes(self, scenes: list) -> dict[str, int]:
+        """Create/find all performers referenced in scenes, returns {stash_id: missing_id} map."""
+        missing_performers_by_stash_id: dict[str, int] = {}
+        for scene in scenes:
+            for scene_performer in scene.get("performers", []):
+                performer = scene_performer["performer"]
+                performer_stash_id = performer["id"]
+                if performer_stash_id in missing_performers_by_stash_id:
+                    continue
+                missing_id = self._get_or_create_missing_performer_from_stashbox(
+                    performer, performer_stash_id
+                )
+                if missing_id is not None:
+                    missing_performers_by_stash_id[performer_stash_id] = missing_id
+        return missing_performers_by_stash_id
+
+    def _get_or_create_missing_performer_from_stashbox(
+        self, stashbox_performer: dict, performer_stash_id: str
+    ) -> int | None:
+        """Find or create a performer in missing Stash from stashbox performer data."""
+        existing_performers = self.missing_stash_client.find_performers_by_stash_id(
+            performer_stash_id
+        )
+        if existing_performers:
+            return existing_performers[0]["id"]
+
+        performer_name = stashbox_performer.get("name", "Unknown")
+        image_url = None
+        if stashbox_performer.get("images"):
+            image_url = stashbox_performer["images"][0].get("url")
+
+        performer_in = {
+            "name": performer_name,
+            "gender": stashbox_performer.get("gender"),
+            "image": image_url,
+            "stash_ids": [
+                {
+                    "stash_id": performer_stash_id,
+                    "endpoint": self.config.get("stashboxEndpoint"),
+                }
+            ],
+        }
+
+        performer = self.missing_stash_client.create_performer(performer_in)
+        if performer:
+            self.logger.info(f"Performer created: {performer_name}")
+            return performer["id"]
+        self.logger.error(f"Failed to create performer '{performer_name}'")
+        return None
+
+    def _resolve_tag_ids(self) -> list[str]:
+        """Resolve configured tag names to local Stash tag IDs."""
+        selected_tags = self.config.get("performerTags")
+        tag_ids = []
+        for tag_name in selected_tags:
+            tag = self.local_stash_client.find_tag(tag_name)
+            if tag:
+                tag_ids.append(tag["id"])
+            else:
+                self.logger.warning(f"Tag '{tag_name}' not found in local Stash.")
+        return tag_ids
+
+    def _deduplicate_scenes(self, scenes: list) -> list:
+        """Deduplicate scenes by stashbox ID."""
+        seen = set()
+        unique = []
+        for scene in scenes:
+            if scene["id"] not in seen:
+                seen.add(scene["id"])
+                unique.append(scene)
+        return unique
+
+    def find_selected_local_studios(self):
+        tag_ids = self._resolve_tag_ids()
+        if not tag_ids:
+            self.logger.warning("No valid tags found for studio selection.")
+            return []
+        return self.local_stash_client.find_studios_by_tags(tag_ids)
+
+    def process_studios(self):
+        selected_studios = self.find_selected_local_studios()
+        if not selected_studios:
+            self.logger.info("No studios found with configured tags.")
+            return
+
+        endpoint = self.config.get("stashboxEndpoint")
+        all_studio_stash_ids = []
+        for studio in selected_studios:
+            studio_stash_id = self._get_stash_id(studio)
+            if not studio_stash_id:
+                self.logger.warning(
+                    f"Studio {studio['name']} does not have a Stashbox ID for endpoint {endpoint}. Skipping..."
+                )
+                continue
+
+            all_studio_stash_ids.append(studio_stash_id)
+            self.logger.info(f"Studio {studio['name']}: Collecting sub-studios...")
+            children = self.stashbox_client.find_studio_children(studio_stash_id)
+            for child in children:
+                all_studio_stash_ids.append(child["id"])
+                self.logger.debug(f"  Sub-studio: {child['name']} ({child['id']})")
+
+        if not all_studio_stash_ids:
+            self.logger.info("No studios with valid Stashbox IDs found.")
+            return
+
+        self.logger.info(f"Querying scenes for {len(all_studio_stash_ids)} studio(s)...")
+        stashbox_scenes = self.stashbox_client.query_scenes_by_studio(all_studio_stash_ids)
+        stashbox_scenes = self._deduplicate_scenes(stashbox_scenes)
+        self.logger.info(f"Found {len(stashbox_scenes)} unique scenes from StashDB.")
+
+        filtered_scenes = self._filter_scenes_by_tags(stashbox_scenes)
+
+        local_scenes = self.local_stash_client.find_all_scenes()
+        existing_missing_scenes = self.missing_stash_client.find_all_scenes()
+        missing_scenes = self.compare_scenes(local_scenes, existing_missing_scenes, filtered_scenes)
+        self.logger.info(f"Found {len(missing_scenes)} new missing scenes to create.")
+
+        missing_performers_by_stash_id = self._ensure_performers_for_scenes(missing_scenes)
+        self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
+        self._cleanup_duplicate_missing_scenes()
+
+    def process_tags(self):
+        tag_ids = self._resolve_tag_ids()
+        if not tag_ids:
+            self.logger.warning("No valid tags found for tag selection.")
+            return
+
+        all_stashbox_scenes = []
+        for parent_tag_id in tag_ids:
+            child_tags = self.local_stash_client.find_child_tags(parent_tag_id)
+            if not child_tags:
+                self.logger.info(f"No child tags found for tag ID {parent_tag_id}.")
+                continue
+
+            for child_tag in child_tags:
+                tag_name = child_tag["name"]
+                self.logger.info(f"Tag '{tag_name}': Looking up on StashDB...")
+                stashbox_tag_id = self.stashbox_client.find_tag_id(tag_name)
+                if not stashbox_tag_id:
+                    self.logger.warning(f"Tag '{tag_name}' not found on StashDB. Skipping...")
+                    continue
+
+                self.logger.info(f"Tag '{tag_name}': Querying scenes...")
+                scenes = self.stashbox_client.query_scenes_by_tag(stashbox_tag_id)
+                self.logger.info(f"Tag '{tag_name}': Found {len(scenes)} scenes.")
+                all_stashbox_scenes.extend(scenes)
+
+        all_stashbox_scenes = self._deduplicate_scenes(all_stashbox_scenes)
+        self.logger.info(f"Found {len(all_stashbox_scenes)} unique scenes from StashDB.")
+
+        filtered_scenes = self._filter_scenes_by_tags(all_stashbox_scenes)
+
+        local_scenes = self.local_stash_client.find_all_scenes()
+        existing_missing_scenes = self.missing_stash_client.find_all_scenes()
+        missing_scenes = self.compare_scenes(local_scenes, existing_missing_scenes, filtered_scenes)
+        self.logger.info(f"Found {len(missing_scenes)} new missing scenes to create.")
+
+        missing_performers_by_stash_id = self._ensure_performers_for_scenes(missing_scenes)
+        self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
+        self._cleanup_duplicate_missing_scenes()
 
     def process_scene_by_id(self, scene_id: int):
         scene = self.local_stash_client.find_scene_by_id(scene_id)

@@ -67,79 +67,161 @@ class StashDbClient(StashboxClient):
         return None
 
     def query_scenes(self, performer_stash_id):
-        query = """
-            query QueryScenes($stash_ids: [ID!]!, $page: Int!) {
+        query = f"""
+            query QueryScenes($stash_ids: [ID!]!, $page: Int!) {{
                 queryScenes(
-                    input: {
-                        performers: {
+                    input: {{
+                        performers: {{
                             value: $stash_ids,
                             modifier: INCLUDES
-                        },
+                        }},
                         per_page: 25,
                         page: $page
-                    }
-                ) {
-                    scenes {
-                        id
-                        title
-                        details
-                        release_date
-                        urls {
-                            url
-                            site {
-                                name
-                                url
-                            }
-                        }
-                        studio {
-                            id
-                            name
-                            parent {
-                                id
-                                name
-                            }
-                        }
-                        images {
-                            id
-                            url
-                        }
-                        performers {
-                            performer {
-                                id
-                                name
-                                gender
-                                aliases
-                                birth_date
-                                breast_type
-                                cup_size
-                                ethnicity
-                                country
-                                hair_color
-                                eye_color
-                                images {
-                                    id
-                                    url
-                                }
-                            }
-                        }
-                        duration
-                        code
-                        tags {
-                            id
-                            name
-                        }
-                    }
+                    }}
+                ) {{
+                    scenes {{ {self._SCENE_FRAGMENT} }}
                     count
+                }}
+            }}
+        """
+        return self._paginate_scenes(query, {"stash_ids": performer_stash_id})
+
+    _SCENE_FRAGMENT = """
+        id
+        title
+        details
+        release_date
+        urls {
+            url
+            site {
+                name
+                url
+            }
+        }
+        studio {
+            id
+            name
+            parent {
+                id
+                name
+            }
+        }
+        images {
+            id
+            url
+        }
+        performers {
+            performer {
+                id
+                name
+                gender
+                aliases
+                birth_date
+                breast_type
+                cup_size
+                ethnicity
+                country
+                hair_color
+                eye_color
+                images {
+                    id
+                    url
+                }
+            }
+        }
+        duration
+        code
+        tags {
+            id
+            name
+        }
+    """
+
+    def query_scenes_by_studio(self, studio_stash_ids: list[str]):
+        query = f"""
+            query QueryScenes($studio_ids: [ID!]!, $page: Int!) {{
+                queryScenes(
+                    input: {{
+                        studios: {{
+                            value: $studio_ids,
+                            modifier: INCLUDES
+                        }},
+                        per_page: 25,
+                        page: $page
+                    }}
+                ) {{
+                    scenes {{ {self._SCENE_FRAGMENT} }}
+                    count
+                }}
+            }}
+        """
+        return self._paginate_scenes(query, {"studio_ids": studio_stash_ids})
+
+    def query_scenes_by_tag(self, tag_id: str):
+        query = f"""
+            query QueryScenes($tag_ids: [ID!]!, $page: Int!) {{
+                queryScenes(
+                    input: {{
+                        tags: {{
+                            value: $tag_ids,
+                            modifier: INCLUDES
+                        }},
+                        per_page: 25,
+                        page: $page
+                    }}
+                ) {{
+                    scenes {{ {self._SCENE_FRAGMENT} }}
+                    count
+                }}
+            }}
+        """
+        return self._paginate_scenes(query, {"tag_ids": [tag_id]})
+
+    def find_studio_children(self, studio_stash_id: str) -> list[dict]:
+        query = """
+            query FindStudio($id: ID!) {
+                findStudio(id: $id) {
+                    child_studios {
+                        id
+                        name
+                    }
                 }
             }
         """
+        result = self._gql_query(query, {"id": studio_stash_id})
+        if result:
+            studio_data = result["data"]["findStudio"]
+            if studio_data:
+                return studio_data.get("child_studios", [])
+        logger.error(f"Failed to find studio children for Stash ID {studio_stash_id}.")
+        return []
+
+    def find_tag_id(self, tag_name: str) -> str | None:
+        query = """
+            query QueryTags($name: String!) {
+                queryTags(input: { name: $name, per_page: 25 }) {
+                    tags {
+                        id
+                        name
+                    }
+                }
+            }
+        """
+        result = self._gql_query(query, {"name": tag_name})
+        if result:
+            tags = result["data"]["queryTags"]["tags"]
+            for tag in tags:
+                if tag["name"].lower() == tag_name.lower():
+                    return tag["id"]
+        logger.warning(f"Tag '{tag_name}' not found on StashDB.")
+        return None
+
+    def _paginate_scenes(self, query, variables):
         scenes = []
         page = 1
         total_scenes = None
         while True:
-            result = self._gql_query(
-                query, {"stash_ids": performer_stash_id, "page": page}
-            )
+            result = self._gql_query(query, {**variables, "page": page})
             if result:
                 scenes_data = result["data"]["queryScenes"]
                 scenes.extend(scenes_data["scenes"])
@@ -149,7 +231,6 @@ class StashDbClient(StashboxClient):
                 page += 1
             else:
                 break
-
         return scenes
 
     def _gql_query(self, query, variables=None):

@@ -23,6 +23,14 @@ tasks:
     description: Create missing scenes of performers to another Stash instance
     defaultArgs:
       mode: process_performers
+  - name: Complete Studios!
+    description: Create missing scenes of studios tagged with configured tags
+    defaultArgs:
+      mode: process_studios
+  - name: Complete Tags!
+    description: Create missing scenes of child tags under configured tags
+    defaultArgs:
+      mode: process_tags
 settings:
   missingStashAddress:
     displayName: StashDB - Missing Stash URL

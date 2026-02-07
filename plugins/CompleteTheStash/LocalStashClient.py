@@ -92,3 +92,31 @@ class LocalStashClient:
 
     def find_all_scenes(self):
         return self.local_stash.find_scenes(fragment="id title stash_ids { stash_id endpoint }")
+
+    def find_studios_by_tags(self, tag_ids: list[str]):
+        studios = []
+        page = 1
+        while True:
+            result = self.local_stash.find_studios(
+                {
+                    "tags": {"value": tag_ids, "modifier": "INCLUDES"},
+                },
+                {
+                    "page": page,
+                    "per_page": 25,
+                },
+                fragment="id name stash_ids { stash_id endpoint }",
+            )
+            studios.extend(result)
+            if len(result) < 25:
+                break
+            page += 1
+        return studios
+
+    def find_child_tags(self, parent_tag_id: str):
+        return self.local_stash.find_tags(
+            {
+                "parents": {"value": [parent_tag_id], "modifier": "INCLUDES", "depth": 0},
+            },
+            fragment="id name",
+        )

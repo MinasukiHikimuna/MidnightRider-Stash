@@ -5,3 +5,5 @@ stashaid/app.log
 __pycache__/
 .venv/
 .env
+.coverage
+PLAN-*.md
