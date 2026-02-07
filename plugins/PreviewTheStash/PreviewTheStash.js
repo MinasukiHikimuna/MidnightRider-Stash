@@ -200,7 +200,7 @@
 
     var previewRight = document.createElement("div");
     previewRight.className = "pts-preview pts-preview-right";
-    previewRight.title = "Next frame (what would flash)";
+    previewRight.title = "Last frame";
 
     overlayContainer.appendChild(cropEl);
     overlayContainer.appendChild(previewLeft);
@@ -393,6 +393,7 @@
 
   var previewCaptureQueue = [];
   var previewCaptureActive = false;
+  var activeCaptureVideo = null;
 
   function captureFrameAt(timestamp, callback) {
     // Queue the capture request
@@ -400,40 +401,58 @@
     processPreviewQueue();
   }
 
+  function abortCapture() {
+    // Abort any in-progress capture
+    if (activeCaptureVideo) {
+      activeCaptureVideo.remove();
+      activeCaptureVideo = null;
+    }
+    previewCaptureQueue = [];
+    previewCaptureActive = false;
+  }
+
   function processPreviewQueue() {
     if (previewCaptureActive || previewCaptureQueue.length === 0) return;
     previewCaptureActive = true;
 
-    var request = previewCaptureQueue.shift();
-    var canvas = document.createElement("canvas");
-    var ctx = canvas.getContext("2d");
-    canvas.width = 120;
-    canvas.height = 120;
+    // Create hidden video for capture (no flashes, no loop interference)
+    var captureVideo = document.createElement("video");
+    captureVideo.src = videoEl.src;
+    captureVideo.style.display = "none";
+    captureVideo.muted = true;
+    captureVideo.preload = "auto";
+    document.body.appendChild(captureVideo);
+    activeCaptureVideo = captureVideo;
 
-    var originalTime = videoEl.currentTime;
-    var wasLooping = !!loopHandler;
+    captureVideo.addEventListener("loadeddata", function onLoaded() {
+      captureVideo.removeEventListener("loadeddata", onLoaded);
+      processNextCapture();
+    });
 
-    function onSeeked() {
-      videoEl.removeEventListener("seeked", onSeeked);
-      // Draw the cropped region to canvas
-      var srcX = crop.x * videoEl.videoWidth;
-      var srcY = crop.y * videoEl.videoHeight;
-      var srcSize = crop.size * videoEl.videoHeight;
-      ctx.drawImage(videoEl, srcX, srcY, srcSize, srcSize, 0, 0, 120, 120);
-      request.callback(canvas.toDataURL("image/jpeg", 0.7));
-
-      // Restore position and continue queue
-      previewCaptureActive = false;
-      if (previewCaptureQueue.length > 0) {
-        processPreviewQueue();
-      } else {
-        // All captures done, restore original position
-        videoEl.currentTime = originalTime;
+    function processNextCapture() {
+      if (previewCaptureQueue.length === 0) {
+        captureVideo.remove();
+        activeCaptureVideo = null;
+        previewCaptureActive = false;
+        return;
       }
-    }
 
-    videoEl.addEventListener("seeked", onSeeked);
-    videoEl.currentTime = request.timestamp;
+      var request = previewCaptureQueue.shift();
+      captureVideo.currentTime = request.timestamp;
+      captureVideo.addEventListener("seeked", function onSeeked() {
+        captureVideo.removeEventListener("seeked", onSeeked);
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
+        canvas.width = 120;
+        canvas.height = 120;
+        var srcX = crop.x * captureVideo.videoWidth;
+        var srcY = crop.y * captureVideo.videoHeight;
+        var srcSize = crop.size * captureVideo.videoHeight;
+        ctx.drawImage(captureVideo, srcX, srcY, srcSize, srcSize, 0, 0, 120, 120);
+        request.callback(canvas.toDataURL("image/jpeg", 0.7));
+        processNextCapture();
+      });
+    }
   }
 
   function updatePreviews() {
@@ -442,13 +461,12 @@
     var previewRight = overlayContainer.querySelector(".pts-preview-right");
     if (!previewLeft || !previewRight) return;
 
-    // Clear the queue and capture fresh frames
-    previewCaptureQueue = [];
+    // Abort any in-progress capture and start fresh
+    abortCapture();
     captureFrameAt(loopStart, function (dataUrl) {
       previewLeft.style.backgroundImage = "url(" + dataUrl + ")";
     });
-    // Show frame just after loop end so user can see what would flash
-    captureFrameAt(loopEnd + frameDuration, function (dataUrl) {
+    captureFrameAt(loopEnd - frameDuration, function (dataUrl) {
       previewRight.style.backgroundImage = "url(" + dataUrl + ")";
     });
   }
