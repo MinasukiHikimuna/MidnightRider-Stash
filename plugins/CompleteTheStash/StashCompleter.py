@@ -396,6 +396,12 @@ class StashCompleter:
         else:
             self.logger.info(f"Performer {performer_name}: No changes detected.")
 
+    def _log_process_summary(self, process_name: str, num_created: int):
+        if num_created > 0:
+            self.logger.info(f"{process_name}: {num_created} new missing scenes created.")
+        else:
+            self.logger.info(f"{process_name}: No new scenes to create.")
+
     def _cleanup_duplicate_missing_scenes(self):
         """Destroy scenes from missing Stash that now exist in local Stash."""
         scenes_in_local_stash = self.local_stash_client.find_all_scenes()
@@ -536,8 +542,9 @@ class StashCompleter:
         self.logger.info(f"Found {len(missing_scenes)} new missing scenes to create.")
 
         missing_performers_by_stash_id = self._ensure_performers_for_scenes(missing_scenes)
-        self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
+        created_ids = self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
         self._cleanup_duplicate_missing_scenes()
+        self._log_process_summary("Studios", len(created_ids))
 
     def process_tags(self):
         tag_ids = self._resolve_tag_ids()
@@ -576,8 +583,9 @@ class StashCompleter:
         self.logger.info(f"Found {len(missing_scenes)} new missing scenes to create.")
 
         missing_performers_by_stash_id = self._ensure_performers_for_scenes(missing_scenes)
-        self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
+        created_ids = self._create_missing_scenes(missing_scenes, missing_performers_by_stash_id)
         self._cleanup_duplicate_missing_scenes()
+        self._log_process_summary("Tags", len(created_ids))
 
     def process_scene_by_id(self, scene_id: int):
         scene = self.local_stash_client.find_scene_by_id(scene_id)
