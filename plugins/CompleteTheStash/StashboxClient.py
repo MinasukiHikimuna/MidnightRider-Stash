@@ -19,7 +19,7 @@ class StashboxClient(ABC):
         pass
 
     @abstractmethod
-    def query_scenes_by_tag(self, tag_id: str):
+    def query_scenes_by_tag(self, tag_id: str, tag_name: str | None = None):
         pass
 
     @abstractmethod

@@ -82,15 +82,15 @@ class TpdbClient(StashboxClient):
         all_scenes = []
         for studio_id in studio_stash_ids:
             scenes = self._paginate_scenes(
-                f"https://api.theporndb.net/scenes?site_id={studio_id}"
+                f"https://api.theporndb.net/sites/{studio_id}/scenes"
             )
             if scenes is not None:
                 all_scenes.extend(scenes)
         return all_scenes
 
-    def query_scenes_by_tag(self, tag_id: str):
+    def query_scenes_by_tag(self, tag_id: str, tag_name: str | None = None):
         return self._paginate_scenes(
-            f"https://api.theporndb.net/scenes?tags={tag_id}"
+            f"https://api.theporndb.net/scenes?tags[{tag_id}]={tag_name or ''}"
         ) or []
 
     def find_studio_children(self, studio_stash_id: str) -> list[dict]:

@@ -561,7 +561,7 @@ class StashCompleter:
                     continue
 
                 self.logger.info(f"Tag '{tag_name}': Querying scenes...")
-                scenes = self.stashbox_client.query_scenes_by_tag(stashbox_tag_id)
+                scenes = self.stashbox_client.query_scenes_by_tag(stashbox_tag_id, tag_name)
                 self.logger.info(f"Tag '{tag_name}': Found {len(scenes)} scenes.")
                 all_stashbox_scenes.extend(scenes)
 

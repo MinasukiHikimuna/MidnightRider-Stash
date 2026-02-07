@@ -157,7 +157,7 @@ class StashDbClient(StashboxClient):
         """
         return self._paginate_scenes(query, {"studio_ids": studio_stash_ids})
 
-    def query_scenes_by_tag(self, tag_id: str):
+    def query_scenes_by_tag(self, tag_id: str, tag_name: str | None = None):
         query = f"""
             query QueryScenes($tag_ids: [ID!]!, $page: Int!) {{
                 queryScenes(
