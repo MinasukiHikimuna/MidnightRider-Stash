@@ -19,7 +19,12 @@ class MissingStashClient:
         return self.missing_stash.get_configuration()
 
     def get_or_create_tag(self, tag_name: str) -> dict:
-        return self.missing_stash.find_tag({"name": tag_name}, True)
+        # Use create=False first to avoid stashapi's info-level logging on creation
+        tag = self.missing_stash.find_tag({"name": tag_name}, create=False)
+        if tag:
+            return tag
+        self.logger.debug(f"Could not find tag with name='{tag_name}', creating")
+        return self.missing_stash.create_tag({"name": tag_name})
 
     def create_scene(self, scene_data):
         return self.missing_stash.create_scene(scene_data)

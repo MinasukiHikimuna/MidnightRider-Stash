@@ -171,14 +171,14 @@ class StashCompleter:
             )
 
             performer_in["id"] = performer_id
-            if performer_in["custom_fields"]:
+            if performer_in.get("custom_fields"):
                 performer_in["custom_fields"] = { "full": performer_in["custom_fields"] }
             self.missing_stash_client.update_performer(performer_in)
             return performer_id
 
         performer = self.missing_stash_client.create_performer(performer_in)
         if performer:
-            self.logger.info(f"Performer created: {performer_in['name']}")
+            self.logger.info(f"Performer created: {performer_in['name']} (stashbox ID: {performer_stash_id})")
             return performer["id"]
         self.logger.error(f"Failed to create performer '{performer_in['name']}'")
         return None
@@ -347,6 +347,15 @@ class StashCompleter:
         total_scenes = len(missing_scenes)
         created_ids = []
         for scene in missing_scenes:
+            stash_id = scene["id"]
+
+            # Check if scene already exists by stash_id (handles orphaned scenes not linked to performer)
+            existing_scenes = self.missing_stash_client.find_scenes_by_stash_id(stash_id)
+            if existing_scenes:
+                self.logger.debug(
+                    f"Scene {scene['title']} already exists with stash_id {stash_id}. Skipping..."
+                )
+                continue
             parent_studio_id = None
             if (
                 "studio" in scene
@@ -466,9 +475,12 @@ class StashCompleter:
             ],
         }
 
+        if stashbox_performer.get("disambiguation"):
+            performer_in["disambiguation"] = stashbox_performer["disambiguation"]
+
         performer = self.missing_stash_client.create_performer(performer_in)
         if performer:
-            self.logger.info(f"Performer created: {performer_name}")
+            self.logger.info(f"Performer created: {performer_name} (stashbox ID: {performer_stash_id})")
             return performer["id"]
         self.logger.error(f"Failed to create performer '{performer_name}'")
         return None

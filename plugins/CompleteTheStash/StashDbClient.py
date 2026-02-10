@@ -114,6 +114,7 @@ class StashDbClient(StashboxClient):
             performer {
                 id
                 name
+                disambiguation
                 gender
                 aliases
                 birth_date
