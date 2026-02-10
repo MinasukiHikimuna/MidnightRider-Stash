@@ -1,6 +1,6 @@
 name: CompleteTheStash
 description: Finds missing scenes for selected performers and creates missing scene metadata to another missing Stash instance. You can use either StashDB or TPDB or both as a source for missing scenes.
-version: 0.6.4
+version: 1.0.0
 url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
 exec:
   - python
@@ -19,16 +19,16 @@ interface: raw
 #       - Scene.Create.Post
 #       - Scene.Update.Post
 tasks:
-  - name: Complete The Stash!
-    description: Create missing scenes of performers to another Stash instance
+  - name: Performers
+    description: Create missing scenes for tagged performers
     defaultArgs:
       mode: process_performers
-  - name: Complete Studios!
-    description: Create missing scenes of studios tagged with configured tags
+  - name: Studios
+    description: Create missing scenes for tagged studios
     defaultArgs:
       mode: process_studios
-  - name: Complete Tags!
-    description: Create missing scenes of child tags under configured tags
+  - name: Tags
+    description: Create missing scenes for child tags under configured tags
     defaultArgs:
       mode: process_tags
 settings:
