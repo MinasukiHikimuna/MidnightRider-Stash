@@ -1,0 +1,14 @@
+name: MarkTheStash
+description: Opens the current scene in Stash Marker Studio from the scene preview toolbar.
+version: 0.1.0
+url: https://github.com/MinasukiHikimuna/MidnightRider-Stash/
+ui:
+  javascript:
+    - MarkTheStash.js
+  css:
+    - MarkTheStash.css
+settings:
+  stashMarkerStudioUrl:
+    displayName: Stash Marker Studio URL
+    description: Base URL where Stash Marker Studio is hosted, for example https://stash-marker-studio.foobar.com.
+    type: STRING
